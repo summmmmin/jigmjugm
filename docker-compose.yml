@@ -1,0 +1,21 @@
+version: "3.9"
+services:
+  db:
+    image: postgres:16
+    container_name: jigmjugm-postgres
+    environment:
+      POSTGRES_DB: jigmjugm
+      POSTGRES_USER: jj_user
+      POSTGRES_PASSWORD: jj_pass
+      TZ: UTC
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U jj_user -d jigmjugm"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+volumes:
+  pgdata:
