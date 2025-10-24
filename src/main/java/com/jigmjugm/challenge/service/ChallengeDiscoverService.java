@@ -16,7 +16,7 @@ import java.util.Map;
 public class ChallengeDiscoverService {
     private final ChallengeRepository challengeRepository;
 
-    public static Page<ChallengeListItemView> discover(String category, String status, String sortParam, int page, int size) {
+    public Page<ChallengeListItemView> discover(String category, String status, String sortParam, int page, int size) {
         Pageable pageable = buildPageable(sortParam, page, size);
         String safeCategory = normalizeCategory(category);
         String safeStatus = normalizeStatus(status);
