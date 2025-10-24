@@ -1,0 +1,1279 @@
+openapi: 3.0.0
+info:
+  title: jigmjugm
+  version: 1.0.0
+  description: >
+    Savings Challenge API (Auth, User, Challenge, Round, Participation, Certification, Home, Stats).
+    - Auth: Kakao OAuth 교환 → JWT
+    - Global Security: HTTP Bearer (JWT)
+servers:
+  # Added by API Auto Mocking Plugin
+  - description: SwaggerHub API Auto Mocking
+    url: https://virtserver.swaggerhub.com/student-e4a/jigmjugm/1.0.0
+
+tags:
+  - name: Auth
+  - name: User
+  - name: Challenge
+  - name: Round
+  - name: Participation
+  - name: Certification
+  - name: Home
+  - name: Stats
+
+security:
+  - bearerAuth: []
+
+paths:
+  # =========================
+  # Auth
+  # =========================
+  /auth/kakao:
+    post:
+      tags: [Auth]
+      summary: 카카오 로그인 토큰 교환
+      description: 카카오 AccessToken을 전달하면 서비스 JWT를 발급
+      security: []  # 전역 보안 해제(로그인 전용)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [kakaoAccessToken]
+              properties:
+                kakaoAccessToken:
+                  type: string
+                  description: 카카오 AccessToken
+            examples:
+              example:
+                value:
+                  kakaoAccessToken: "KakaoAccessTokenExample"
+      responses:
+        '200':
+          description: JWT 발급 성공
+          headers:
+            Cache-Control:
+              schema: { type: string, example: "no-store" }
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          description: 요청 형식 오류
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+              examples:
+                validation:
+                  value: { code: "VALIDATION_ERROR", message: "kakaoAccessToken 필수" }
+        '401':
+          description: 카카오 인증 실패
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+              examples:
+                unauth:
+                  value: { code: "UNAUTHORIZED", message: "유효하지 않은 카카오 토큰" }
+        '502':
+          description: 카카오 측 오류
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '504':
+          description: 카카오 응답 지연
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+
+  /auth/logout:
+    post:
+      tags: [Auth]
+      summary: 로그아웃
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refreshToken]
+              properties:
+                refreshToken: { type: string }
+                allDevices:
+                  type: boolean
+                  default: false
+                  description: true이면 내 모든 리프레시 토큰을 폐기
+      responses:
+        '204':
+          description: 로그아웃 완료 (No Content)
+        '400':
+          description: 형식 오류
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '401':
+          description: 인증 실패
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+
+  # =========================
+  # User
+  # =========================
+  /me:
+    get:
+      tags: [User]
+      summary: 내 프로필 조회
+      responses:
+        '200':
+          description: 사용자 정보
+          headers:
+            Cache-Control:
+              schema: { type: string, example: "no-store" }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/UserProfile' }
+        '401':
+          description: 인증 실패
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+
+  /users/check-nickname:
+    get:
+      tags: [User]
+      summary: 닉네임 중복 및 규칙 검증
+      description: 닉네임 사용 가능 여부와 규칙 위반 사유를 확인한다.
+      parameters:
+        - name: nickname
+          in: query
+          required: true
+          schema:
+            type: string
+            minLength: 2
+            maxLength: 16
+          description: 확인할 닉네임(한글/영문/숫자 조합, 공백 및 특수문자 불가)
+      responses:
+        '200':
+          description: 사용 가능 여부
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/NicknameCheckResponse' }
+              examples:
+                available:
+                  value: { available: true }
+                duplicate:
+                  value: { available: false, code: "DUPLICATE", message: "이미 사용 중입니다." }
+                forbidden:
+                  value: { available: false, code: "FORBIDDEN_WORD", message: "사용할 수 없는 단어입니다." }
+        '400':
+          description: 닉네임 규칙 위반
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+              examples:
+                invalidFormat:
+                  value: { code: "VALIDATION_ERROR", message: "2~16자, 공백/특수문자 불가" }
+
+  /me/nickname:
+    patch:
+      tags: [User]
+      summary: 닉네임 수정
+      description: 가입 시 자동 생성된 닉네임을 수정한다.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [nickname]
+              properties:
+                nickname: { type: string, minLength: 2, maxLength: 16, pattern: "^[가-힣A-Za-z0-9]{2,16}$" }
+      responses:
+        '200':
+          description: 수정 성공
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/NicknameResponse' }
+        '400':
+          description: 규칙 위반
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '409':
+          description: 중복 닉네임
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+
+  /me/withdraw:
+    post:
+      tags: [User]
+      summary: 회원 탈퇴
+      responses:
+        '204':
+          description: 탈퇴 완료 (No Content)
+        '401':
+          description: 인증 실패
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+
+  # =========================
+  # Challenge – Create / Discover / Mine / Home / Detail / TitleCheck
+  # =========================
+  /challenges:
+    post:
+      tags: [Challenge]
+      summary: 챌린지 생성
+      description: 챌린지를 생성한다.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ChallengeCreateRequest' }
+      responses:
+        '201':
+          description: 생성 성공
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ChallengeCreateResponse' }
+        '400':
+          description: 입력값 오류 (기간/금액/형식)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+              examples:
+                invalidDate:
+                  value: { code: "INVALID_DATE_RANGE", message: "시작일은 종료일 이전이어야 합니다." }
+                invalidAmount:
+                  value: { code: "INVALID_AMOUNT", message: "목표금액은 회차금액보다 커야 합니다." }
+        '409':
+          description: 챌린지명 중복
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+              examples:
+                dup:
+                  value: { code: "DUPLICATE_TITLE", message: "중복되는 챌린지명입니다." }
+        '429':
+          description: 과도한 생성 요청(레이트 제한)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+
+  /challenges/discover:
+    get:
+      tags: [Challenge]
+      summary: 챌린지 목록 조회(전체)
+      parameters:
+        - name: categoryType
+          in: query
+          schema: { type: string, enum: [ALL, SAVING, INSTALLMENT, OTHER], default: ALL }
+        - name: status
+          in: query
+          schema: { $ref: '#/components/schemas/ChallengeStatus' }
+          description: 진행 상태 필터(PENDING/ACTIVE/COMPLETED). 미지정 시 전체.
+        - name: page
+          in: query
+          schema: { type: integer, default: 0, minimum: 0 }
+        - name: size
+          in: query
+          schema: { type: integer, default: 20, minimum: 1, maximum: 100 }
+        - name: sort
+          in: query
+          schema: { type: string }
+          description: "정렬: startDate,asc | createdAt,desc | avgCertRate,desc"
+      responses:
+        '200':
+          description: 챌린지 목록(페이징)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PageResponseChallenge' }
+
+  /me/challenges:
+    get:
+      tags: [Challenge]
+      summary: 나의 챌린지 목록
+      description: 내가 참여한 챌린지 목록. 삭제/수정 가능 여부를 함께 제공한다.
+      parameters:
+        - name: categoryType
+          in: query
+          schema: { type: string, enum: [ALL, SAVING, INSTALLMENT, OTHER], default: ALL }
+        - name: status
+          in: query
+          schema: { $ref: '#/components/schemas/ChallengeStatus' }
+        - name: includeWithdrawn
+          in: query
+          schema: { type: boolean, default: false }
+          description: 탈퇴 이력 포함 여부
+        - name: page
+          in: query
+          schema: { type: integer, default: 0 }
+        - name: size
+          in: query
+          schema: { type: integer, default: 20 }
+        - name: sort
+          in: query
+          schema: { type: string }
+          description: startDate,asc | createdAt,desc | avgCertRate,desc
+      responses:
+        '200':
+          description: 나의 챌린지(페이징)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  content:
+                    type: array
+                    items: { $ref: '#/components/schemas/MyChallengeListItem' }
+                  page: { type: integer }
+                  size: { type: integer }
+                  totalElements: { type: integer }
+
+  /home:
+    get:
+      tags: [Home]
+      summary: 홈 화면용
+      description: 시작일순/최신/인증 활발/내 인증 리스트
+      parameters:
+        - name: categoryType
+          in: query
+          schema: { type: string, enum: [ALL, SAVING, INSTALLMENT, OTHER], default: ALL }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 3, minimum: 1, maximum: 10 }
+        - name: periodDays
+          in: query
+          schema: { type: integer, default: 28, minimum: 7, maximum: 90 }
+        - name: minParticipants
+          in: query
+          schema: { type: integer, default: 5, minimum: 1 }
+        - name: myUpcomingLimit
+          in: query
+          schema: { type: integer, default: 3, minimum: 1, maximum: 10 }
+          description: 나의 챌린지
+      responses:
+        '200':
+          description: 홈
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  startSoon:
+                    type: array
+                    items: { $ref: '#/components/schemas/ChallengeListItem' }
+                  newest:
+                    type: array
+                    items: { $ref: '#/components/schemas/ChallengeListItem' }
+                  active:
+                    type: array
+                    items: { $ref: '#/components/schemas/ChallengeListItem' }
+                  myUpcoming:
+                    type: array
+                    items: { $ref: '#/components/schemas/MyUpcomingItem' }
+
+  /challenges/{challengeId}:
+    get:
+      tags: [Challenge]
+      summary: 챌린지 상세 조회
+      parameters:
+        - name: challengeId
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          description: 상세 정보
+          headers:
+            Cache-Control:
+              schema: { type: string, example: "no-store" }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ChallengeDetail' }
+        '404':
+          description: 없음
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+    patch:
+      tags: [Challenge]
+      summary: 챌린지 수정
+      parameters:
+        - name: challengeId
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ChallengeCreateRequest' }
+      responses:
+        '200':
+          description: 수정 성공
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  challengeId: { type: integer }
+                  updated: { type: boolean }
+        '403':
+          description: 권한/사용중 제한
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+    delete:
+      tags: [Challenge]
+      summary: 챌린지 삭제
+      parameters:
+        - name: challengeId
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '204':
+          description: 삭제 완료 (No Content)
+        '403':
+          description: 권한 없음
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+
+  /challenges/check-title:
+    get:
+      tags: [Challenge]
+      summary: 챌린지명 중복 확인
+      description: 입력 제목을 정규화한 뒤 중복 여부를 확인한다.
+      parameters:
+        - name: title
+          in: query
+          required: true
+          schema: { type: string, maxLength: 50, minLength: 1 }
+          description: 확인할 챌린지명
+        - name: excludeId
+          in: query
+          schema: { type: integer }
+          description: 수정 시 현재 챌린지 ID를 전달하면 해당 항목은 중복 검사에서 제외한다.
+      responses:
+        '200':
+          description: 중복 결과
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TitleCheckResponse' }
+              examples:
+                available:
+                  value: { available: true, normalizedTitle: "카카오 26주 적금" }
+                duplicate:
+                  value: { available: false, normalizedTitle: "카카오 26주 적금" }
+        '400':
+          description: 길이/형식 오류
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+
+  # =========================
+  # Rounds
+  # =========================
+  /challenges/{challengeId}/rounds:
+    get:
+      tags: [Round]
+      summary: 챌린지 회차 목록 조회
+      description: 회차 정보(회차/날짜)와 내 인증 여부/두배 여부를 반환한다.
+      parameters:
+        - name: challengeId
+          in: path
+          required: true
+          schema: { type: integer }
+        - name: certification
+          in: query
+          schema:
+            type: string
+            enum: [ALL, CERTIFIED, NOT_CERTIFIED]
+          description: 선택. 기본 ALL
+        - name: sort
+          in: query
+          schema:
+            type: string
+            enum: [scheduledDate,asc, scheduledDate,desc]
+          description: 기본 scheduledDate,asc
+        - name: page
+          in: query
+          schema: { type: integer, default: 0, minimum: 0 }
+        - name: size
+          in: query
+          schema: { type: integer, default: 20, minimum: 1, maximum: 100 }
+      responses:
+        '200':
+          description: 회차 목록
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RoundListResponse' }
+        '404':
+          description: 챌린지 없음
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+
+  /challenges/{challengeId}/rounds/rebuild:
+    post:
+      tags: [Round]
+      summary: 회차 재빌드 (관리용)
+      description: 회차목록 초기화
+      parameters:
+        - name: challengeId
+          in: path
+          required: true
+          schema: { type: integer }
+        - name: dryRun
+          in: query
+          schema: { type: boolean, default: false }
+      responses:
+        '200':
+          description: 재빌드 결과
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RoundRebuildResponse' }
+        '404':
+          description: 챌린지 없음
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+
+  # =========================
+  # Participation
+  # =========================
+  /challenges/{challengeId}/participants:
+    post:
+      tags: [Participation]
+      summary: 챌린지 참여하기
+      description: 챌린지 상태가 진행전(PENDING)일 때만 참여 가능.
+      parameters:
+        - name: challengeId
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '201':
+          description: 참여 성공
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ParticipationResponse' }
+        '400':
+          description: 진행중/완료 챌린지에는 참여 불가
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+              examples:
+                notPending:
+                  value: { code: "INVALID_STATE", message: "진행 중이거나 완료된 챌린지입니다." }
+        '409':
+          description: 이미 참여 중
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+              examples:
+                already:
+                  value: { code: "ALREADY_PARTICIPATING", message: "이미 참여중인 챌린지입니다." }
+    get:
+      tags: [Participation]
+      summary: 참여자 목록
+      description: 참여자 리스트를 반환한다.
+      parameters:
+        - name: challengeId
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          description: 참여자 리스트
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/ParticipantItem' }
+        '404':
+          description: 챌린지 없음
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+
+  /participants/{participationId}:
+    delete:
+      tags: [Participation]
+      summary: 챌린지 나가기
+      parameters:
+        - name: participationId
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '204':
+          description: 탈퇴 완료 (No Content)
+        '403':
+          description: 본인 아님
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '404':
+          description: 참여 없음
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+
+  # =========================
+  # Certification
+  # =========================
+  /rounds/{roundId}/certifications:
+    post:
+      tags: [Certification]
+      summary: 인증 등록
+      description: 한 회차당 한 번만 가능.
+      parameters:
+        - name: roundId
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CertificationCreateRequest' }
+      responses:
+        '201':
+          description: 등록 성공 (승인 상태)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CertificationResponse' }
+        '403':
+          description: 참여 중이 아님
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '404':
+          description: 회차 없음
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '409':
+          description: 이미 해당 회차에 인증함(회차당 1건)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+
+  /certifications/{certificationId}:
+    get:
+      tags: [Certification]
+      summary: 인증 상세 조회
+      description: 지정한 인증을 기준으로 인증 상세 정보와 해당 챌린지의 전체 회차 진행 현황을 함께 반환한다.
+      parameters:
+        - name: certificationId
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          description: 인증 상세 및 진행 현황
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CertificationDetailResponse' }
+        '404':
+          description: 인증 없음
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+    patch:
+      tags: [Certification]
+      summary: 인증 수정
+      description: 본인 소유의 인증만 수정 가능. 상태는 변경되지 않는다(항상 APPROVED 유지).
+      parameters:
+        - name: certificationId
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CertificationUpdateRequest' }
+      responses:
+        '200':
+          description: 수정 성공
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  updated: { type: boolean }
+        '403':
+          description: 권한 없음(본인 아님)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '404':
+          description: 인증 없음
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+    delete:
+      tags: [Certification]
+      summary: 인증 삭제
+      description: 본인 소유의 인증만 삭제 가능.
+      parameters:
+        - name: certificationId
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '204':
+          description: 삭제 완료 (No Content)
+        '403':
+          description: 권한 없음(본인 아님)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '404':
+          description: 인증 없음
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+
+  /me/challenges/{challengeId}/certifications:
+    get:
+      tags: [Certification]
+      summary: 내 인증 목록 (오늘 날짜 기준 회차)
+      parameters:
+        - name: challengeId
+          in: path
+          required: true
+          schema: { type: integer }
+        - name: page
+          in: query
+          schema: { type: integer, default: 0, minimum: 0 }
+        - name: size
+          in: query
+          schema: { type: integer, default: 20, minimum: 1, maximum: 100 }
+        - name: sort
+          in: query
+          schema: { type: string }
+          description: 기본 scheduledDate,asc
+        - name: includeNotCertified
+          in: query
+          schema: { type: boolean, default: true }
+          description: true면 미인증 회차도 함께
+      responses:
+        '200':
+          description: 내 인증 목록 (회차 기준)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MyCertificationListResponse' }
+        '404':
+          description: 챌린지 없음
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+
+  # =========================
+  # Stats
+  # =========================
+  /challenges/{challengeId}/stats:
+    get:
+      tags: [Stats]
+      summary: 챌린지 통계
+      parameters:
+        - name: challengeId
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          description: 통계
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/StatsResponse' }
+        '404':
+          description: 챌린지 없음
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+
+  /challenges/{challengeId}/ranking:
+    get:
+      tags: [Stats]
+      summary: 기간별 인증률 랭킹
+      description: 인증률 = (기간 내 승인 인증 횟수) / (기간 내 예정 회차 수)
+      parameters:
+        - name: challengeId
+          in: path
+          required: true
+          schema: { type: integer }
+        - name: periodDays
+          in: query
+          schema: { type: integer, default: 28, minimum: 7, maximum: 90 }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 3, minimum: 1, maximum: 50 }
+      responses:
+        '200':
+          description: 랭킹
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RankingResponse' }
+        '404':
+          description: 챌린지 없음
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  # ---------- Common ----------
+  schemas:
+    ErrorResponse:
+      type: object
+      properties:
+        code: { type: string }
+        message: { type: string }
+        details:
+          type: object
+          additionalProperties: true
+
+    # ---------- Auth ----------
+    AuthResponse:
+      type: object
+      required: [accessToken, tokenType, user]
+      properties:
+        accessToken: { type: string }
+        refreshToken: { type: string }
+        refreshTokenExpiresIn: { type: integer, description: 초 단위 만료 시각 }
+        tokenType:
+          type: string
+          enum: [Bearer]
+        expiresIn: { type: integer }
+        isNewUser:
+          type: boolean
+        user:
+          $ref: '#/components/schemas/UserProfile'
+
+    # ---------- User ----------
+    UserProfile:
+      type: object
+      required: [userId, nickname, createdAt]
+      properties:
+        userId: { type: integer }
+        nickname: { type: string, minLength: 2, maxLength: 16 }
+        createdAt: { type: string, format: date-time }
+
+    NicknameCheckResponse:
+      type: object
+      properties:
+        available: { type: boolean }
+        code:
+          type: string
+          description: 실패 시 사유 코드(DUPLICATE, FORBIDDEN_WORD 등)
+        message:
+          type: string
+          description: 사용자용 메시지
+
+    NicknameResponse:
+      type: object
+      required: [nickname, changedAt]
+      properties:
+        nickname: { type: string }
+        changedAt:
+          type: string
+          format: date-time
+          description: 변경 시각(UTC)
+
+    # ---------- Challenge ----------
+    ChallengeStatus:
+      type: string
+      description: |
+        챌린지 진행 상태 (startDate / endDate 기준 계산)
+        - PENDING: 시작일 전
+        - ACTIVE: 시작~종료일 사이
+        - COMPLETED: 종료일 경과
+      enum: [PENDING, ACTIVE, COMPLETED]
+      example: ACTIVE
+
+    ChallengeCreateRequest:
+      type: object
+      required: [title, categoryType, startDate, endDate, frequencyType, perRoundAmount, goalAmount]
+      properties:
+        title: { type: string, maxLength: 50 }
+        description: { type: string, maxLength: 500 }
+        categoryType:
+          type: string
+          enum: [SAVING, INSTALLMENT, OTHER]
+        startDate: { type: string, format: date }
+        endDate: { type: string, format: date }
+        frequencyType:
+          type: string
+          enum: [DAILY, WEEKLY]
+        weeklyDays:
+          type: array
+          items:
+            type: string
+            enum: [MON, TUE, WED, THU, FRI, SAT, SUN]
+          description: WEEKLY일 때 필수
+        perRoundAmount:
+          type: integer
+          minimum: 1
+        goalAmount:
+          type: integer
+          minimum: 1
+        thumbnailUrl:
+          type: string
+          maxLength: 255
+          nullable: true
+
+    ChallengeCreateResponse:
+      type: object
+      required: [challengeId, roundCount, status]
+      properties:
+        challengeId: { type: integer }
+        roundCount: { type: integer }
+        status:
+          $ref: '#/components/schemas/ChallengeStatus'
+
+    ChallengeListItem:
+      type: object
+      properties:
+        challengeId: { type: integer }
+        title: { type: string }
+        categoryType: { type: string, enum: [SAVING, INSTALLMENT, OTHER] }
+        startDate: { type: string, format: date }
+        endDate: { type: string, format: date }
+        createdAt: { type: string, format: date-time }
+        thumbnailUrl: { type: string }
+        participantCount: { type: integer }
+        avgCertRate: { type: number, format: float }
+        status: { $ref: '#/components/schemas/ChallengeStatus' }
+        frequencyType: { type: string, enum: [DAILY, WEEKLY] }
+        perRoundAmount: { type: integer }
+
+    MyChallengeListItem:
+      allOf:
+        - $ref: '#/components/schemas/ChallengeListItem'
+        - type: object
+          properties:
+            permissions:
+              type: object
+              properties:
+                canEdit: { type: boolean }
+                canDelete: { type: boolean }
+
+    PageResponseChallenge:
+      type: object
+      properties:
+        content:
+          type: array
+          items: { $ref: '#/components/schemas/ChallengeListItem' }
+        page: { type: integer }
+        size: { type: integer }
+        totalElements: { type: integer }
+
+    ChallengeDetail:
+      type: object
+      properties:
+        challengeId: { type: integer }
+        title: { type: string }
+        description: { type: string }
+        categoryType: { type: string, enum: [SAVING, INSTALLMENT, OTHER] }
+        frequencyType: { type: string, enum: [DAILY, WEEKLY] }
+        perRoundAmount: { type: integer }
+        goalAmount: { type: integer }
+        startDate: { type: string, format: date }
+        endDate: { type: string, format: date }
+        createdAt: { type: string, format: date-time }
+        thumbnailUrl: { type: string }
+        creator:
+          type: object
+          properties:
+            userId: { type: integer }
+            nickname: { type: string }
+        participantCount: { type: integer }
+        avgCertRate: { type: number, format: float }
+        totalRounds: { type: integer, description: 전체 라운드 수 }
+        status: { $ref: '#/components/schemas/ChallengeStatus' }
+        myParticipation:
+          type: object
+          nullable: true
+          properties:
+            participationId: { type: integer }
+            status: { type: string, enum: [ACTIVE, WITHDRAWN] }
+            joinedAt: { type: string, format: date-time }
+            leftAt: { type: string, format: date-time, nullable: true }
+            myCertifiedCount: { type: integer, description: 내가 승인받은 인증 횟수 }
+            myCertRate:
+              type: number
+              format: float
+              description: 내 인증률(승인 인증 / 예정 라운드)
+        myNextScheduledDate:
+          type: string
+          format: date
+          nullable: true
+        myStats:
+          type: object
+          nullable: true
+          properties:
+            approvedCount: { type: integer }
+            submittedCount: { type: integer }
+            rejectedCount: { type: integer }
+        recentRankings:
+          type: array
+          description: 챌린지 시작일을 기준으로 1~최대 4주 구간의 인증률 랭킹
+          items:
+            type: object
+            properties:
+              weekIndex: { type: integer }
+              periodStart: { type: string, format: date }
+              periodEnd: { type: string, format: date }
+              top:
+                type: array
+                maxItems: 3
+                items:
+                  type: object
+                  properties:
+                    rank: { type: integer }
+                    userId: { type: integer }
+                    nickname: { type: string }
+                    certRate: { type: number, format: float }
+              me:
+                oneOf:
+                  - type: object
+                    properties:
+                      rank: { type: integer }
+                      certRate: { type: number, format: float }
+                  - nullable: true
+        permissions:
+          type: object
+          properties:
+            canEdit: { type: boolean }
+            canRebuildRounds: { type: boolean }
+            canDelete: { type: boolean }
+
+    TitleCheckResponse:
+      type: object
+      properties:
+        available: { type: boolean }
+        normalizedTitle:
+          type: string
+          description: 서버가 정규화한 제목(앞뒤 공백 제거, 연속 공백 1칸으로 축약)
+
+    # ---------- Home ----------
+    MyUpcomingItem:
+      type: object
+      properties:
+        challengeId: { type: integer }
+        title: { type: string }
+        status: { $ref: '#/components/schemas/ChallengeStatus' }
+        nextRoundNo: { type: integer }
+        nextScheduledDate: { type: string, format: date }
+        remainingRounds: { type: integer, description: 오늘 이후 미인증 라운드 수 }
+        perRoundAmount: { type: integer }
+        thumbnailUrl: { type: string }
+
+    # ---------- Rounds ----------
+    RoundListResponse:
+      type: object
+      properties:
+        content:
+          type: array
+          items: { $ref: '#/components/schemas/RoundItem' }
+        page: { type: integer }
+        size: { type: integer }
+        totalElements: { type: integer }
+
+    RoundItem:
+      type: object
+      properties:
+        roundId: { type: integer }
+        roundNo: { type: integer }
+        scheduledDate: { type: string, format: date }
+        certified: { type: boolean, description: 이 회차에서 내가 인증했는지 }
+        doubleYn:
+          type: string
+          enum: [Y, N]
+          nullable: true
+          description: certified=true일 때만 Y/N, 미인증이면 null
+
+    RoundRebuildResponse:
+      type: object
+      properties:
+        keptRounds: { type: integer }
+        recreatedRounds: { type: integer }
+        deletedRounds: { type: integer }
+        dryRun:
+          type: boolean
+          default: false
+
+    # ---------- Participation ----------
+    ParticipationResponse:
+      type: object
+      properties:
+        participationId: { type: integer }
+        challengeId: { type: integer }
+        userId: { type: integer }
+        joinedAt: { type: string, format: date-time }
+
+    ParticipantItem:
+      type: object
+      properties:
+        userId: { type: integer }
+        nickname: { type: string }
+        joinedAt: { type: string, format: date-time }
+
+    # ---------- Certification ----------
+    CertificationCreateRequest:
+      type: object
+      required: [amount]
+      properties:
+        amount: { type: integer, minimum: 1, description: 인증 금액(원) }
+        comment: { type: string, maxLength: 200 }
+        imageUrl: { type: string, description: 인증 이미지 URL(S3) }
+        doubleYn:
+          type: string
+          enum: [Y, N]
+          default: N
+          description: 2배 인증 여부
+
+    CertificationUpdateRequest:
+      type: object
+      properties:
+        amount: { type: integer, minimum: 1 }
+        comment: { type: string, maxLength: 200 }
+        imageUrl: { type: string }
+        doubleYn:
+          type: string
+          enum: [Y, N]
+
+    CertificationResponse:
+      type: object
+      properties:
+        certificationId: { type: integer }
+        participationId: { type: integer }
+        roundId: { type: integer }
+        amount: { type: integer }
+        doubleYn: { type: string, enum: [Y, N] }
+        certificationStatus:
+          type: string
+          enum: [SUBMITTED, APPROVED, REJECTED]
+          description: 현재는 항상 APPROVED로 저장 및 반환
+        certifiedAt: { type: string, format: date-time }
+
+    MyCertificationListResponse:
+      type: object
+      properties:
+        content:
+          type: array
+          items: { $ref: '#/components/schemas/MyCertificationRow' }
+        page: { type: integer }
+        size: { type: integer }
+        totalElements: { type: integer }
+        summary:
+          type: object
+          properties:
+            accumulatedAmount:
+              type: integer
+              description: 승인된 인증 금액 합계(미인증 제외)
+
+    MyCertificationRow:
+      type: object
+      properties:
+        roundId: { type: integer }
+        roundNo: { type: integer }
+        scheduledDate: { type: string, format: date }
+        certified: { type: boolean }
+        certificationId:
+          type: integer
+          nullable: true
+        amount:
+          type: integer
+          description: 인증 금액(미인증이면 0)
+        doubleYn:
+          type: string
+          enum: [Y, N]
+          nullable: true
+        comment:
+          type: string
+          nullable: true
+        imageUrl:
+          type: string
+          nullable: true
+        certifiedAt:
+          type: string
+          format: date-time
+          nullable: true
+
+    CertificationDetailResponse:
+      type: object
+      description: 인증 상세 + 해당 챌린지 회차별 인증 현황
+      properties:
+        certification:
+          type: object
+          properties:
+            certificationId: { type: integer }
+            challengeId: { type: integer }
+            challengeTitle: { type: string }
+            roundNo: { type: integer }
+            certifiedAt: { type: string, format: date-time }
+            amount: { type: integer }
+            doubleYn:
+              type: string
+              enum: [Y, N]
+            accumulatedAmount:
+              type: integer
+              description: 해당 회차까지의 누적 인증 금액(승인건 합계)
+        rounds:
+          type: array
+          description: 챌린지 전체 회차별 인증 상태 목록
+          items:
+            type: object
+            properties:
+              roundNo: { type: integer }
+              scheduledDate: { type: string, format: date }
+              status:
+                type: string
+                enum: [CERTIFIED, NOT_CERTIFIED, UPCOMING]
+
+    # ---------- Stats (원본 유지) ----------
+    StatsResponse:
+      type: object
+      properties:
+        avgTotalAmount: { type: integer }
+        avgCertRate: { type: number, format: float }
+        totalParticipants: { type: integer }
+
+    RankingResponse:
+      type: object
+      properties:
+        top:
+          type: array
+          items: { $ref: '#/components/schemas/RankingItem' }
+        me:
+          oneOf:
+            - $ref: '#/components/schemas/RankingMe'
+            - nullable: true
+
+    RankingItem:
+      type: object
+      properties:
+        rank: { type: integer }
+        userId: { type: integer }
+        nickname: { type: string }
+        certRate: { type: number, format: float }
+
+    RankingMe:
+      type: object
+      properties:
+        rank: { type: integer }
+        certRate: { type: number, format: float }
