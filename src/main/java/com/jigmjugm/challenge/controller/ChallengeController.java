@@ -68,7 +68,7 @@ public class ChallengeController {
             @RequestParam(required = false, defaultValue = "startDate,asc") String sort
     ) {
         Page<ChallengeListItemView> result =
-                ChallengeDiscoverService.discover(categoryType, status, sort, page, size);
+                challengeDiscoverService.discover(categoryType, status, sort, page, size);
 
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("content", result.getContent());
