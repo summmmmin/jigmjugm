@@ -7,12 +7,14 @@ import com.jigmjugm.challenge.dto.ChallengeCreateResponse;
 import com.jigmjugm.challenge.dto.ChallengeListItemView;
 import com.jigmjugm.challenge.service.ChallengeDiscoverService;
 import com.jigmjugm.challenge.service.ChallengeService;
+import com.jigmjugm.security.dto.CustomOAuth2User;
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Comparator;
@@ -26,12 +28,12 @@ public class ChallengeController {
     private final ChallengeService challengeService;
     private final ChallengeDiscoverService challengeDiscoverService;
     // TODO: 실제 사용자 아이디로 수정
-    private Long mockUserId() { return 1L; }
+    //private Long mockUserId() { return 1L; }
 
     @PostMapping
     @Operation(summary = "챌린지 생성")
-    public ResponseEntity<ChallengeCreateResponse> create(@Valid @RequestBody ChallengeCreateRequest req) {
-        ChallengeCreateResponse res = challengeService.create(mockUserId(), req);
+    public ResponseEntity<ChallengeCreateResponse> create(@AuthenticationPrincipal CustomOAuth2User user, @Valid @RequestBody ChallengeCreateRequest req) {
+        ChallengeCreateResponse res = challengeService.create(user.getUserId(), req);
         return ResponseEntity.status(HttpStatus.CREATED).body(res);
     }
 
