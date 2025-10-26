@@ -25,7 +25,7 @@ public class ChallengeDiscoverService {
         return challengeRepository.searchDiscover(safeCategory, safeStatus, todaySeoul, pageable);
     }
 
-    private Pageable buildPageable(String sortParam, int page, int size) {
+    public Pageable buildPageable(String sortParam, int page, int size) {
         Map<String, String> allow = Map.of(
                 "startdate", "startDate",
                 "createdat", "createdAt"
@@ -44,14 +44,14 @@ public class ChallengeDiscoverService {
         return PageRequest.of(Math.max(0, page), Math.max(1, Math.min(size, 100)), Sort.by(dir, prop));
     }
 
-    private String normalizeCategory(String c) {
+    public String normalizeCategory(String c) {
         if (c == null) return "ALL";
         return switch (c.toUpperCase()) {
             case "ALL", "SAVING", "INSTALLMENT", "OTHER" -> c.toUpperCase();
             default -> "ALL";
         };
     }
-    private String normalizeStatus(String s) {
+    public String normalizeStatus(String s) {
         if (s == null) return null;
         return switch (s.toUpperCase()) {
             case "PENDING", "ACTIVE", "COMPLETED" -> s.toUpperCase();

@@ -82,6 +82,46 @@ public class ChallengeService {
     }
     public record TitleCheckResult(boolean available, String normalizedTitle) {}
 
+    @Transactional
+    public boolean update(Long challengeId, Long userId, ChallengeCreateRequest challengeCreateRequest) {
+        validateBusiness(challengeCreateRequest);
+        Challenge challenge = getDetail(challengeId);
+        if (!challenge.getCreatorUserId().equals(userId)) {
+            //throw new AccessDeniedException("권한이 없습니다.");
+        }
+        String normalizedTitle = TextNormalizer.normalizeTitle(challengeCreateRequest.getTitle());
+        boolean dup = challengeRepo.existsNormalizedTitleExceptId(normalizedTitle, challengeId);
+        //if (dup) throw new DuplicateTitleException("중복되는 챌린지명입니다.");
+
+        challenge.setTitle(challengeCreateRequest.getTitle().trim().replaceAll("\\s+", " "));
+        challenge.setDescription(challengeCreateRequest.getDescription());
+        challenge.setCategoryType(challengeCreateRequest.getCategoryType());
+        challenge.setFrequencyType(challengeCreateRequest.getFrequencyType());
+        challenge.setWeeklyDaysMask("WEEKLY".equalsIgnoreCase(challengeCreateRequest.getFrequencyType())
+                ? policy.toWeeklyMask(challengeCreateRequest.getWeeklyDays())
+                : 0);
+        challenge.setStartDate(challengeCreateRequest.getStartDate());
+        challenge.setEndDate(challengeCreateRequest.getEndDate());
+        challenge.setPerRoundAmount(challengeCreateRequest.getPerRoundAmount());
+        challenge.setGoalAmount(challengeCreateRequest.getGoalAmount());
+        challenge.setThumbnailUrl(challengeCreateRequest.getThumbnailUrl());
+
+        // 회차 재생성
+        challenge.getRounds().clear();
+        var schedule = policy.buildSchedule(challenge.getFrequencyType(), challenge.getWeeklyDaysMask(), challenge.getStartDate(), challenge.getEndDate());
+        makeRounds(challenge, schedule);
+        return true;
+    }
+
+    @Transactional
+    public void softDelete(Long challengeId, Long userId) {
+        Challenge challenge = getDetail(challengeId);
+        if (!challenge.getCreatorUserId().equals(userId)) {
+            //throw new AccessDeniedException("권한이 없습니다.");
+        }
+        challenge.setIsDeleted(true);
+    }
+
     private void validateBusiness(ChallengeCreateRequest req) {
         if (!req.getStartDate().isBefore(req.getEndDate())) {
             throw new IllegalArgumentException("시작일은 종료일 이전이어야 합니다.");
