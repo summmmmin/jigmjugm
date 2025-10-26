@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.Query;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 
 public interface ChallengeParticipationRepository extends JpaRepository<ChallengeParticipation, Long> {
 
@@ -48,4 +49,6 @@ public interface ChallengeParticipationRepository extends JpaRepository<Challeng
       """)
     Page<MyChallengeListItemView> findMyChallenges(
             Long userId, String category, String status, LocalDate today, boolean includeWithdrawn, Pageable pageable);
+
+    Optional<ChallengeParticipation> findByChallenge_ChallengeIdAndUserIdAndLeftAtIsNull(Long challengeId, Long userId);
 }
