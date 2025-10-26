@@ -38,4 +38,25 @@ public interface ChallengeRepository  extends JpaRepository<Challenge, Long> {
             @Param("category") String category,
             @Param("status") String status,
             Pageable pageable);
+
+    @Query(value = """
+      select exists(
+        select 1
+        from challenge c
+        where c.is_deleted = false
+          and regexp_replace(trim(c.title), '\\s+', ' ', 'g') = :normalizedTitle
+      )
+      """, nativeQuery = true)
+    boolean existsnormalizedTitle(String normalizedTitle);
+
+    @Query(value = """
+      select exists(
+        select 1
+        from challenge c
+        where c.is_deleted = false
+          and c.challenge_id <> :excludeId
+          and regexp_replace(trim(c.title), '\\s+', ' ', 'g') = :normalizedTitle
+      )
+      """, nativeQuery = true)
+    boolean existsNormalizedTitleExceptId(String normalizedTitle, Long excludeId);
 }

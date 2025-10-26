@@ -7,6 +7,7 @@ import com.jigmjugm.challenge.dto.ChallengeCreateResponse;
 import com.jigmjugm.challenge.repo.ChallengeRepository;
 import com.jigmjugm.challenge.repo.ChallengeRoundRepository;
 import com.jigmjugm.common.util.ChallengePolicy;
+import com.jigmjugm.common.util.TextNormalizer;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,9 +31,15 @@ public class ChallengeService {
                 ? policy.toWeeklyMask(req.getWeeklyDays())
                 : 0;
 
+        // 중복제목 확인
+        String norm = com.jigmjugm.common.util.TextNormalizer.normalizeTitle(req.getTitle());
+        if (challengeRepo.existsnormalizedTitle(norm)) {
+            //throw new DuplicateTitleException("중복되는 챌린지명입니다.");
+        }
+
         Challenge ch = new Challenge();
         ch.setCreatorUserId(creatorUserId);
-        ch.setTitle(normalize(req.getTitle()));
+        ch.setTitle(req.getTitle());
         ch.setDescription(req.getDescription());
         ch.setCategoryType(req.getCategoryType());
         ch.setFrequencyType(req.getFrequencyType());
@@ -70,17 +77,20 @@ public class ChallengeService {
                 .orElseThrow(() -> new NoSuchElementException("challenge not found"));
     }
 
+    @Transactional(readOnly = true)
+    public TitleCheckResult check(String title, Long excludeId) {
+        String normalizedTitle = TextNormalizer.normalizeTitle(title);
+        boolean duplicate = (excludeId == null)
+                ? challengeRepo.existsnormalizedTitle(normalizedTitle)
+                : challengeRepo.existsNormalizedTitleExceptId(normalizedTitle, excludeId);
+        return new TitleCheckResult(!duplicate, normalizedTitle);
+    }
+    public record TitleCheckResult(boolean available, String normalizedTitle) {}
+
     private void validateDates(LocalDate start, LocalDate end) {
         if (start == null || end == null || start.isAfter(end)) {
             throw new IllegalArgumentException("기간이 올바르지 않습니다.");
         }
-    }
-
-    private String normalize(String s) {
-        if (s == null) return null;
-        String t = s.trim().replaceAll("\\s+", " ");
-        if (t.isEmpty()) throw new IllegalArgumentException("제목은 비어있을 수 없습니다.");
-        return t;
     }
 }
 
