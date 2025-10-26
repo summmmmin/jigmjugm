@@ -6,6 +6,8 @@ import com.jigmjugm.challenge.dto.ChallengeCreateRequest;
 import com.jigmjugm.challenge.dto.ChallengeCreateResponse;
 import com.jigmjugm.challenge.repo.ChallengeRepository;
 import com.jigmjugm.challenge.repo.ChallengeRoundRepository;
+import com.jigmjugm.common.error.ApiErrorCode;
+import com.jigmjugm.common.error.BusinessException;
 import com.jigmjugm.common.util.ChallengePolicy;
 import com.jigmjugm.common.util.TextNormalizer;
 import lombok.RequiredArgsConstructor;
@@ -34,7 +36,7 @@ public class ChallengeService {
         // 중복제목 확인
         String normalizedTitle = com.jigmjugm.common.util.TextNormalizer.normalizeTitle(challengeCreateRequest.getTitle());
         if (challengeRepo.existsnormalizedTitle(normalizedTitle)) {
-            //throw new DuplicateTitleException("중복되는 챌린지명입니다.");
+            throw new BusinessException(ApiErrorCode.DUPLICATE_TITLE, "중복되는 챌린지명입니다.");
         }
 
         Challenge challenge = new Challenge();
@@ -87,11 +89,11 @@ public class ChallengeService {
         validateBusiness(challengeCreateRequest);
         Challenge challenge = getDetail(challengeId);
         if (!challenge.getCreatorUserId().equals(userId)) {
-            //throw new AccessDeniedException("권한이 없습니다.");
+            throw new BusinessException(ApiErrorCode.FORBIDDEN, "권한이 없습니다.");
         }
         String normalizedTitle = TextNormalizer.normalizeTitle(challengeCreateRequest.getTitle());
         boolean dup = challengeRepo.existsNormalizedTitleExceptId(normalizedTitle, challengeId);
-        //if (dup) throw new DuplicateTitleException("중복되는 챌린지명입니다.");
+        if (dup) throw new BusinessException(ApiErrorCode.DUPLICATE_TITLE, "중복되는 챌린지명입니다.");
 
         challenge.setTitle(challengeCreateRequest.getTitle().trim().replaceAll("\\s+", " "));
         challenge.setDescription(challengeCreateRequest.getDescription());
@@ -117,17 +119,17 @@ public class ChallengeService {
     public void softDelete(Long challengeId, Long userId) {
         Challenge challenge = getDetail(challengeId);
         if (!challenge.getCreatorUserId().equals(userId)) {
-            //throw new AccessDeniedException("권한이 없습니다.");
+            throw new BusinessException(ApiErrorCode.FORBIDDEN, "권한이 없습니다.");
         }
         challenge.setIsDeleted(true);
     }
 
     private void validateBusiness(ChallengeCreateRequest req) {
         if (!req.getStartDate().isBefore(req.getEndDate())) {
-            throw new IllegalArgumentException("시작일은 종료일 이전이어야 합니다.");
+            throw new BusinessException(ApiErrorCode.INVALID_DATE_RANGE, "시작일은 종료일 이전이어야 합니다.");
         }
         if (req.getGoalAmount() <= req.getPerRoundAmount()) {
-            throw new IllegalArgumentException("목표금액은 회차금액보다 커야 합니다.");
+            throw new BusinessException(ApiErrorCode.INVALID_AMOUNT, "목표금액은 회차금액보다 커야 합니다.");
         }
         if ("WEEKLY".equalsIgnoreCase(req.getFrequencyType())) {
             if (req.getWeeklyDays() == null || req.getWeeklyDays().isEmpty()) {
