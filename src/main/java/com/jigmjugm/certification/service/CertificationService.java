@@ -171,7 +171,7 @@ public class CertificationService {
 
     @Transactional(readOnly = true)
     public MyCertificationListResponse myCertificationList(Long userId, Long challengeId, int page, int size,
-                                               String sort, boolean includeNotCertified) {
+                                                           String sort, boolean includeNotCertified) {
 
         var challengeParticipation = participationRepository
                 .findByChallenge_ChallengeIdAndUserIdAndLeftAtIsNull(challengeId, userId)

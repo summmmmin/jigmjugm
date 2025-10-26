@@ -17,6 +17,7 @@ public interface ChallengeParticipationRepository extends JpaRepository<Challeng
 
     List<ChallengeParticipation> findByChallenge_ChallengeIdAndLeftAtIsNull(Long challengeId);
 
+    Optional<ChallengeParticipation> findByChallenge_ChallengeIdAndUserIdAndLeftAtIsNull(Long challengeId, Long userId);
     @Query("""
       select
         c.challengeId as challengeId,
@@ -49,6 +50,4 @@ public interface ChallengeParticipationRepository extends JpaRepository<Challeng
       """)
     Page<MyChallengeListItemView> findMyChallenges(
             Long userId, String category, String status, LocalDate today, boolean includeWithdrawn, Pageable pageable);
-
-    Optional<ChallengeParticipation> findByChallenge_ChallengeIdAndUserIdAndLeftAtIsNull(Long challengeId, Long userId);
 }
