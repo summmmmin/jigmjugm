@@ -1,0 +1,33 @@
+// com.jigmjugm.common.error.ApiErrorCode
+package com.jigmjugm.common.error;
+
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+
+@Getter
+@RequiredArgsConstructor
+public enum ApiErrorCode {
+    // 공통
+    INVALID_INPUT_VALUE("INVALID_INPUT_VALUE", HttpStatus.BAD_REQUEST),
+    MISSING_PARAMETER("MISSING_PARAMETER", HttpStatus.BAD_REQUEST),
+    MISSING_HEADER("MISSING_HEADER", HttpStatus.BAD_REQUEST),
+    TYPE_MISMATCH("TYPE_MISMATCH", HttpStatus.BAD_REQUEST),
+    MESSAGE_NOT_READABLE("MESSAGE_NOT_READABLE", HttpStatus.BAD_REQUEST),
+    METHOD_NOT_ALLOWED("METHOD_NOT_ALLOWED", HttpStatus.METHOD_NOT_ALLOWED),
+    NOT_FOUND("NOT_FOUND", HttpStatus.NOT_FOUND),
+    FORBIDDEN("FORBIDDEN", HttpStatus.FORBIDDEN),
+    DATA_INTEGRITY("DATA_INTEGRITY", HttpStatus.CONFLICT),
+    EXTERNAL_API_ERROR("EXTERNAL_API_ERROR", HttpStatus.BAD_GATEWAY),
+    RATE_LIMIT("RATE_LIMIT", HttpStatus.TOO_MANY_REQUESTS),
+    INTERNAL_ERROR("INTERNAL_ERROR", HttpStatus.INTERNAL_SERVER_ERROR),
+
+    INVALID_DATE_RANGE("INVALID_DATE_RANGE", HttpStatus.BAD_REQUEST),
+    INVALID_AMOUNT("INVALID_AMOUNT", HttpStatus.BAD_REQUEST),
+    DUPLICATE_TITLE("DUPLICATE_TITLE", HttpStatus.CONFLICT),
+    INVALID_STATE("INVALID_STATE", HttpStatus.BAD_REQUEST),
+    ALREADY_PARTICIPATING("ALREADY_PARTICIPATING", HttpStatus.CONFLICT);
+
+    private final String code;
+    private final HttpStatus httpStatus;
+}

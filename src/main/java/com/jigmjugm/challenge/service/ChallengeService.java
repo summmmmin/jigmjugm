@@ -6,7 +6,10 @@ import com.jigmjugm.challenge.dto.ChallengeCreateRequest;
 import com.jigmjugm.challenge.dto.ChallengeCreateResponse;
 import com.jigmjugm.challenge.repo.ChallengeRepository;
 import com.jigmjugm.challenge.repo.ChallengeRoundRepository;
+import com.jigmjugm.common.error.ApiErrorCode;
+import com.jigmjugm.common.error.BusinessException;
 import com.jigmjugm.common.util.ChallengePolicy;
+import com.jigmjugm.common.util.TextNormalizer;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,41 +27,38 @@ public class ChallengeService {
     private final ChallengePolicy policy;
 
     @Transactional
-    public ChallengeCreateResponse create(Long creatorUserId, ChallengeCreateRequest req) {
-        validateDates(req.getStartDate(), req.getEndDate());
-        int weeklyMask = "WEEKLY".equalsIgnoreCase(req.getFrequencyType())
-                ? policy.toWeeklyMask(req.getWeeklyDays())
+    public ChallengeCreateResponse create(Long creatorUserId, ChallengeCreateRequest challengeCreateRequest) {
+        validateBusiness(challengeCreateRequest);
+        int weeklyMask = "WEEKLY".equalsIgnoreCase(challengeCreateRequest.getFrequencyType())
+                ? policy.toWeeklyMask(challengeCreateRequest.getWeeklyDays())
                 : 0;
 
-        Challenge ch = new Challenge();
-        ch.setCreatorUserId(creatorUserId);
-        ch.setTitle(normalize(req.getTitle()));
-        ch.setDescription(req.getDescription());
-        ch.setCategoryType(req.getCategoryType());
-        ch.setFrequencyType(req.getFrequencyType());
-        ch.setWeeklyDaysMask(weeklyMask);
-        ch.setStartDate(req.getStartDate());
-        ch.setEndDate(req.getEndDate());
-        ch.setPerRoundAmount(req.getPerRoundAmount());
-        ch.setGoalAmount(req.getGoalAmount());
-        ch.setThumbnailUrl(req.getThumbnailUrl());
+        // 중복제목 확인
+        String normalizedTitle = com.jigmjugm.common.util.TextNormalizer.normalizeTitle(challengeCreateRequest.getTitle());
+        if (challengeRepo.existsnormalizedTitle(normalizedTitle)) {
+            throw new BusinessException(ApiErrorCode.DUPLICATE_TITLE, "중복되는 챌린지명입니다.");
+        }
 
-        Challenge saved = challengeRepo.save(ch);
+        Challenge challenge = new Challenge();
+        challenge.setCreatorUserId(creatorUserId);
+        challenge.setTitle(challengeCreateRequest.getTitle());
+        challenge.setDescription(challengeCreateRequest.getDescription());
+        challenge.setCategoryType(challengeCreateRequest.getCategoryType());
+        challenge.setFrequencyType(challengeCreateRequest.getFrequencyType());
+        challenge.setWeeklyDaysMask(weeklyMask);
+        challenge.setStartDate(challengeCreateRequest.getStartDate());
+        challenge.setEndDate(challengeCreateRequest.getEndDate());
+        challenge.setPerRoundAmount(challengeCreateRequest.getPerRoundAmount());
+        challenge.setGoalAmount(challengeCreateRequest.getGoalAmount());
+        challenge.setThumbnailUrl(challengeCreateRequest.getThumbnailUrl());
+
+        Challenge saved = challengeRepo.save(challenge);
 
         // 회차 생성
         List<LocalDate> schedule = policy.buildSchedule(
                 saved.getFrequencyType(), saved.getWeeklyDaysMask(),
                 saved.getStartDate(), saved.getEndDate());
-
-        int idx = 1;
-        for (LocalDate d : schedule) {
-            ChallengeRound r = new ChallengeRound();
-            r.setChallenge(saved);
-            r.setRoundNo(idx++);
-            r.setScheduledDate(d);
-            r.setBaseAmount(saved.getPerRoundAmount());
-            saved.getRounds().add(r);
-        }
+        makeRounds(saved, schedule);
 
         String status = policy.computeStatus(saved.getStartDate(), saved.getEndDate(), LocalDate.now(ZoneId.of("Asia/Seoul")));
         return new ChallengeCreateResponse(saved.getChallengeId(), schedule.size(), status);
@@ -66,21 +66,88 @@ public class ChallengeService {
 
     @Transactional(readOnly = true)
     public Challenge getDetail(Long challengeId) {
-        return challengeRepo.findById(challengeId)
+        Challenge challenge = challengeRepo.findById(challengeId)
                 .orElseThrow(() -> new NoSuchElementException("challenge not found"));
+        if (Boolean.TRUE.equals(challenge.getIsDeleted())) {
+            throw new NoSuchElementException("challenge not found");
+        }
+        return challenge;
     }
 
-    private void validateDates(LocalDate start, LocalDate end) {
-        if (start == null || end == null || start.isAfter(end)) {
-            throw new IllegalArgumentException("기간이 올바르지 않습니다.");
+    @Transactional(readOnly = true)
+    public TitleCheckResult check(String title, Long excludeId) {
+        String normalizedTitle = TextNormalizer.normalizeTitle(title);
+        boolean duplicate = (excludeId == null)
+                ? challengeRepo.existsnormalizedTitle(normalizedTitle)
+                : challengeRepo.existsNormalizedTitleExceptId(normalizedTitle, excludeId);
+        return new TitleCheckResult(!duplicate, normalizedTitle);
+    }
+    public record TitleCheckResult(boolean available, String normalizedTitle) {}
+
+    @Transactional
+    public boolean update(Long challengeId, Long userId, ChallengeCreateRequest challengeCreateRequest) {
+        validateBusiness(challengeCreateRequest);
+        Challenge challenge = getDetail(challengeId);
+        if (!challenge.getCreatorUserId().equals(userId)) {
+            throw new BusinessException(ApiErrorCode.FORBIDDEN, "권한이 없습니다.");
+        }
+        String normalizedTitle = TextNormalizer.normalizeTitle(challengeCreateRequest.getTitle());
+        boolean dup = challengeRepo.existsNormalizedTitleExceptId(normalizedTitle, challengeId);
+        if (dup) throw new BusinessException(ApiErrorCode.DUPLICATE_TITLE, "중복되는 챌린지명입니다.");
+
+        challenge.setTitle(challengeCreateRequest.getTitle().trim().replaceAll("\\s+", " "));
+        challenge.setDescription(challengeCreateRequest.getDescription());
+        challenge.setCategoryType(challengeCreateRequest.getCategoryType());
+        challenge.setFrequencyType(challengeCreateRequest.getFrequencyType());
+        challenge.setWeeklyDaysMask("WEEKLY".equalsIgnoreCase(challengeCreateRequest.getFrequencyType())
+                ? policy.toWeeklyMask(challengeCreateRequest.getWeeklyDays())
+                : 0);
+        challenge.setStartDate(challengeCreateRequest.getStartDate());
+        challenge.setEndDate(challengeCreateRequest.getEndDate());
+        challenge.setPerRoundAmount(challengeCreateRequest.getPerRoundAmount());
+        challenge.setGoalAmount(challengeCreateRequest.getGoalAmount());
+        challenge.setThumbnailUrl(challengeCreateRequest.getThumbnailUrl());
+
+        // 회차 재생성
+        challenge.getRounds().clear();
+        var schedule = policy.buildSchedule(challenge.getFrequencyType(), challenge.getWeeklyDaysMask(), challenge.getStartDate(), challenge.getEndDate());
+        makeRounds(challenge, schedule);
+        return true;
+    }
+
+    @Transactional
+    public void softDelete(Long challengeId, Long userId) {
+        Challenge challenge = getDetail(challengeId);
+        if (!challenge.getCreatorUserId().equals(userId)) {
+            throw new BusinessException(ApiErrorCode.FORBIDDEN, "권한이 없습니다.");
+        }
+        challenge.setIsDeleted(true);
+    }
+
+    private void validateBusiness(ChallengeCreateRequest req) {
+        if (!req.getStartDate().isBefore(req.getEndDate())) {
+            throw new BusinessException(ApiErrorCode.INVALID_DATE_RANGE, "시작일은 종료일 이전이어야 합니다.");
+        }
+        if (req.getGoalAmount() <= req.getPerRoundAmount()) {
+            throw new BusinessException(ApiErrorCode.INVALID_AMOUNT, "목표금액은 회차금액보다 커야 합니다.");
+        }
+        if ("WEEKLY".equalsIgnoreCase(req.getFrequencyType())) {
+            if (req.getWeeklyDays() == null || req.getWeeklyDays().isEmpty()) {
+                throw new IllegalArgumentException("WEEKLY의 경우 요일(weeklyDays)은 필수입니다.");
+            }
         }
     }
 
-    private String normalize(String s) {
-        if (s == null) return null;
-        String t = s.trim().replaceAll("\\s+", " ");
-        if (t.isEmpty()) throw new IllegalArgumentException("제목은 비어있을 수 없습니다.");
-        return t;
+    private void makeRounds(Challenge saved, List<LocalDate> schedule) {
+        int idx = 1;
+        for (LocalDate localDate : schedule) {
+            var challengeRound = new ChallengeRound();
+            challengeRound.setChallenge(saved);
+            challengeRound.setRoundNo(idx++);
+            challengeRound.setScheduledDate(localDate);
+            challengeRound.setBaseAmount(saved.getPerRoundAmount());
+            saved.getRounds().add(challengeRound);
+        }
     }
 }
 
