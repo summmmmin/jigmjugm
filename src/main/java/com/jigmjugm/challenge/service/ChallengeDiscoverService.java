@@ -9,6 +9,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
 import java.util.Map;
 
 @Service
@@ -20,7 +21,8 @@ public class ChallengeDiscoverService {
         Pageable pageable = buildPageable(sortParam, page, size);
         String safeCategory = normalizeCategory(category);
         String safeStatus = normalizeStatus(status);
-        return challengeRepository.searchDiscover(safeCategory, safeStatus, pageable);
+        LocalDate todaySeoul = LocalDate.now(java.time.ZoneId.of("Asia/Seoul"));
+        return challengeRepository.searchDiscover(safeCategory, safeStatus, todaySeoul, pageable);
     }
 
     private Pageable buildPageable(String sortParam, int page, int size) {

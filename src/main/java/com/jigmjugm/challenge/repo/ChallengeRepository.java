@@ -8,6 +8,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDate;
+
 public interface ChallengeRepository  extends JpaRepository<Challenge, Long> {
     @Query("""
         select
@@ -25,18 +27,19 @@ public interface ChallengeRepository  extends JpaRepository<Challenge, Long> {
             else 'COMPLETED'
           end) as status
         from Challenge c
-        where
-          (:category = 'ALL' or c.categoryType = :category)
+        where c.isDeleted = false
+          and (:category = 'ALL' or c.categoryType = :category)
           and (
             :status is null
             or (:status = 'PENDING' and CURRENT_DATE < c.startDate)
-            or (:status = 'ACTIVE' and c.startDate <= CURRENT_DATE and c.endDate >= CURRENT_DATE)
-            or (:status = 'COMPLETED' and c.endDate < CURRENT_DATE)
+            or (:status = 'ACTIVE' and c.startDate <= :today and c.endDate >= :today)
+            or (:status = 'COMPLETED' and c.endDate < :today)
           )
         """)
     Page<ChallengeListItemView> searchDiscover(
             @Param("category") String category,
             @Param("status") String status,
+            @Param("today") LocalDate today,
             Pageable pageable);
 
     @Query(value = """
