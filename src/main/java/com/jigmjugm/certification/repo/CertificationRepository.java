@@ -1,6 +1,7 @@
 package com.jigmjugm.certification.repo;
 
 import com.jigmjugm.certification.domain.Certification;
+import com.jigmjugm.challenge.domain.ChallengeParticipation;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
@@ -13,5 +14,7 @@ public interface CertificationRepository extends JpaRepository<Certification, Lo
     List<Certification> findByParticipation_UserId(Long userId);
 
     Optional<Certification> findByCertificationIdAndParticipation_UserId(Long certificationId, Long userId);
+
+    Optional<ChallengeParticipation> findByChallenge_ChallengeIdAndUserIdAndLeftAtIsNull(Long challengeId, Long userId);
 }
 
