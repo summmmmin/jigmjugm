@@ -24,19 +24,26 @@ public class HomeController {
     public ResponseEntity<HomeResponse> home(
             @AuthenticationPrincipal UserPrincipal principal,
             @RequestParam(defaultValue = "ALL") String categoryType,
-            @RequestParam(defaultValue = "3") int limit,            // 1~10
-            @RequestParam(defaultValue = "28") int periodDays,      // 7~90
-            @RequestParam(defaultValue = "5") int minParticipants,  // >=1
-            @RequestParam(defaultValue = "3") int myUpcomingLimit   // 1~10
+            @RequestParam(defaultValue = "3") int limit,
+            @RequestParam(defaultValue = "28") int periodDays,
+            @RequestParam(defaultValue = "5") int minParticipants,
+            @RequestParam(defaultValue = "3") int myUpcomingLimit
     ) {
-        if (principal == null) throw new BusinessException(ApiErrorCode.FORBIDDEN, "인증 필요");
-        if (limit < 1 || limit > 10) throw new BusinessException(ApiErrorCode.INVALID_INPUT_VALUE, "limit는 1~10");
-        if (myUpcomingLimit < 1 || myUpcomingLimit > 10) throw new BusinessException(ApiErrorCode.INVALID_INPUT_VALUE, "myUpcomingLimit는 1~10");
-        if (periodDays < 7 || periodDays > 90) throw new BusinessException(ApiErrorCode.INVALID_INPUT_VALUE, "periodDays는 7~90");
-        if (minParticipants < 1) throw new BusinessException(ApiErrorCode.INVALID_INPUT_VALUE, "minParticipants는 1 이상");
+        // 기본 파라미터 검증
+        if (limit < 1 || limit > 10)
+            throw new BusinessException(ApiErrorCode.INVALID_INPUT_VALUE, "limit는 1~10 사이여야 합니다.");
+        if (myUpcomingLimit < 1 || myUpcomingLimit > 10)
+            throw new BusinessException(ApiErrorCode.INVALID_INPUT_VALUE, "myUpcomingLimit는 1~10 사이여야 합니다.");
+        if (periodDays < 7 || periodDays > 90)
+            throw new BusinessException(ApiErrorCode.INVALID_INPUT_VALUE, "periodDays는 7~90 사이여야 합니다.");
+        if (minParticipants < 1)
+            throw new BusinessException(ApiErrorCode.INVALID_INPUT_VALUE, "minParticipants는 1 이상이어야 합니다.");
+
+        // 로그인하지 않았을 경우 userId는 null
+        Long userId = (principal != null) ? principal.getUserId() : null;
 
         var res = homeService.buildHome(
-                principal.getUserId(), categoryType, limit, periodDays, minParticipants, myUpcomingLimit);
+                userId, categoryType, limit, periodDays, minParticipants, myUpcomingLimit);
 
         return ResponseEntity.ok(res);
     }

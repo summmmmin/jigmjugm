@@ -43,14 +43,16 @@ public class HomeService {
 
         List<HomeResponse.ChallengeListItem> startSoon =
                 mapToDto(challengeRepository.homeStartSoon(category, today, topN));
-
         List<HomeResponse.ChallengeListItem> newest =
                 mapToDto(challengeRepository.homeNewest(category, today, topN));
-
         List<HomeResponse.ChallengeListItem> active =
                 mapToDto(challengeRepository.homeActive(category, today, periodDays, minParticipants, topN));
 
-        List<HomeResponse.MyUpcomingItem> myUpcoming = buildMyUpcoming(userId, myUpcomingLimit, today);
+        // 로그인 상태일 때만 myUpcoming 조회
+        List<HomeResponse.MyUpcomingItem> myUpcoming = null;
+        if (userId != null) {
+            myUpcoming = buildMyUpcoming(userId, myUpcomingLimit, today);
+        }
 
         return HomeResponse.builder()
                 .startSoon(startSoon)
