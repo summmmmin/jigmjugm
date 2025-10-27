@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.Query;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 
 public interface ChallengeParticipationRepository extends JpaRepository<ChallengeParticipation, Long> {
 
@@ -16,6 +17,7 @@ public interface ChallengeParticipationRepository extends JpaRepository<Challeng
 
     List<ChallengeParticipation> findByChallenge_ChallengeIdAndLeftAtIsNull(Long challengeId);
 
+    Optional<ChallengeParticipation> findByChallenge_ChallengeIdAndUserIdAndLeftAtIsNull(Long challengeId, Long userId);
     @Query("""
       select
         c.challengeId as challengeId,
