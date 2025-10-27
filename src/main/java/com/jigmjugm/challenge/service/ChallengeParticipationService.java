@@ -5,6 +5,8 @@ import com.jigmjugm.challenge.domain.ChallengeParticipation;
 import com.jigmjugm.challenge.dto.ParticipationResponse;
 import com.jigmjugm.challenge.repo.ChallengeParticipationRepository;
 import com.jigmjugm.challenge.repo.ChallengeRepository;
+import com.jigmjugm.common.error.ApiErrorCode;
+import com.jigmjugm.common.error.BusinessException;
 import com.jigmjugm.common.util.ChallengePolicy;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -12,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.*;
 
@@ -28,13 +31,13 @@ public class ChallengeParticipationService {
         Challenge challenge = challengeRepository.findById(challengeId)
                 .orElseThrow(() -> new NoSuchElementException("챌린지를 찾을 수 없습니다."));
 
-        String status = policy.computeStatus(challenge.getStartDate(), challenge.getEndDate(), LocalDate.now());
+        String status = policy.computeStatus(challenge.getStartDate(), challenge.getEndDate(), LocalDate.now(ZoneId.of("Asia/Seoul")));
         if (!"PENDING".equals(status)) {
-            throw new IllegalStateException("진행 중 또는 완료된 챌린지는 참여할 수 없습니다.");
+            throw new BusinessException(ApiErrorCode.INVALID_STATE, "진행 중 또는 완료된 챌린지는 참여할 수 없습니다.");
         }
 
         if (participationRepository.existsByChallenge_ChallengeIdAndUserIdAndLeftAtIsNull(challengeId, userId)) {
-            throw new IllegalStateException("이미 참여 중입니다.");
+            throw new BusinessException(ApiErrorCode.ALREADY_PARTICIPATING, "이미 참여 중입니다.");
         }
 
         ChallengeParticipation participation = ChallengeParticipation.builder()
