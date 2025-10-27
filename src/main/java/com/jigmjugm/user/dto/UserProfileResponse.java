@@ -1,4 +1,4 @@
-package com.jigmjugm.dto;
+package com.jigmjugm.user.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;

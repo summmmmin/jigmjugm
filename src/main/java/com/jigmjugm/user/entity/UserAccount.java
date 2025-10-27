@@ -1,4 +1,4 @@
-package com.jigmjugm.domain.user.entity;
+package com.jigmjugm.user.entity;
 
 import jakarta.persistence.*;
 import lombok.*;

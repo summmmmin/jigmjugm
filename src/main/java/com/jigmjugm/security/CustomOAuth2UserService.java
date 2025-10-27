@@ -1,7 +1,7 @@
 package com.jigmjugm.security;
 
-import com.jigmjugm.domain.user.entity.UserAccount;
-import com.jigmjugm.domain.user.repository.UserAccountRepository;
+import com.jigmjugm.user.entity.UserAccount;
+import com.jigmjugm.user.repository.UserAccountRepository;
 import com.jigmjugm.security.dto.CustomOAuth2User;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
