@@ -1,9 +1,11 @@
 package com.jigmjugm.challenge.service;
 
 import com.jigmjugm.challenge.domain.Challenge;
+import com.jigmjugm.challenge.domain.ChallengeParticipation;
 import com.jigmjugm.challenge.domain.ChallengeRound;
 import com.jigmjugm.challenge.dto.ChallengeCreateRequest;
 import com.jigmjugm.challenge.dto.ChallengeCreateResponse;
+import com.jigmjugm.challenge.repo.ChallengeParticipationRepository;
 import com.jigmjugm.challenge.repo.ChallengeRepository;
 import com.jigmjugm.challenge.repo.ChallengeRoundRepository;
 import com.jigmjugm.common.error.ApiErrorCode;
@@ -24,6 +26,7 @@ import java.util.NoSuchElementException;
 public class ChallengeService {
     private final ChallengeRepository challengeRepo;
     private final ChallengeRoundRepository roundRepo;
+    private final ChallengeParticipationRepository participationRepo;
     private final ChallengePolicy policy;
 
     @Transactional
@@ -59,6 +62,13 @@ public class ChallengeService {
                 saved.getFrequencyType(), saved.getWeeklyDaysMask(),
                 saved.getStartDate(), saved.getEndDate());
         makeRounds(saved, schedule);
+
+        var owner = ChallengeParticipation.builder()
+                .challenge(saved)
+                .userId(creatorUserId)
+                .roleType("OWNER")
+                .build();
+        participationRepo.save(owner);
 
         String status = policy.computeStatus(saved.getStartDate(), saved.getEndDate(), LocalDate.now(ZoneId.of("Asia/Seoul")));
         return new ChallengeCreateResponse(saved.getChallengeId(), schedule.size(), status);
