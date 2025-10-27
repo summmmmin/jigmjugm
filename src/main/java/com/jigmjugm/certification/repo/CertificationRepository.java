@@ -1,7 +1,6 @@
 package com.jigmjugm.certification.repo;
 
 import com.jigmjugm.certification.domain.Certification;
-import com.jigmjugm.challenge.domain.ChallengeParticipation;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
