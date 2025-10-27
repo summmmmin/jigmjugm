@@ -50,4 +50,6 @@ public interface ChallengeParticipationRepository extends JpaRepository<Challeng
       """)
     Page<MyChallengeListItemView> findMyChallenges(
             Long userId, String category, String status, LocalDate today, boolean includeWithdrawn, Pageable pageable);
+
+    List<ChallengeParticipation> findByUserIdAndLeftAtIsNull(Long userId);
 }
