@@ -22,8 +22,8 @@ public interface ChallengeRepository  extends JpaRepository<Challenge, Long> {
           c.createdAt as createdAt,
           c.thumbnailUrl as thumbnailUrl,
           (case
-            when CURRENT_DATE < c.startDate then 'PENDING'
-            when c.startDate <= CURRENT_DATE and c.endDate >= CURRENT_DATE then 'ACTIVE'
+            when :today < c.startDate then 'PENDING'
+            when c.startDate <= :today and c.endDate >= :today then 'ACTIVE'
             else 'COMPLETED'
           end) as status
         from Challenge c
@@ -31,7 +31,7 @@ public interface ChallengeRepository  extends JpaRepository<Challenge, Long> {
           and (:category = 'ALL' or c.categoryType = :category)
           and (
             :status is null
-            or (:status = 'PENDING' and CURRENT_DATE < c.startDate)
+            or (:status = 'PENDING' and :today < c.startDate)
             or (:status = 'ACTIVE' and c.startDate <= :today and c.endDate >= :today)
             or (:status = 'COMPLETED' and c.endDate < :today)
           )
@@ -50,7 +50,7 @@ public interface ChallengeRepository  extends JpaRepository<Challenge, Long> {
           and regexp_replace(trim(c.title), '\\s+', ' ', 'g') = :normalizedTitle
       )
       """, nativeQuery = true)
-    boolean existsnormalizedTitle(String normalizedTitle);
+    boolean existsnormalizedTitle(@Param("normalizedTitle") String normalizedTitle);
 
     @Query(value = """
       select exists(
@@ -61,5 +61,5 @@ public interface ChallengeRepository  extends JpaRepository<Challenge, Long> {
           and regexp_replace(trim(c.title), '\\s+', ' ', 'g') = :normalizedTitle
       )
       """, nativeQuery = true)
-    boolean existsNormalizedTitleExceptId(String normalizedTitle, Long excludeId);
+    boolean existsNormalizedTitleExceptId(@Param("normalizedTitle") String normalizedTitle, @Param("excludeId") Long excludeId);
 }

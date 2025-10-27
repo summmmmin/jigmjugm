@@ -7,6 +7,8 @@ import com.jigmjugm.challenge.domain.ChallengeParticipation;
 import com.jigmjugm.challenge.domain.ChallengeRound;
 import com.jigmjugm.challenge.repo.ChallengeParticipationRepository;
 import com.jigmjugm.challenge.repo.ChallengeRoundRepository;
+import com.jigmjugm.common.error.ApiErrorCode;
+import com.jigmjugm.common.error.BusinessException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -35,12 +37,12 @@ public class CertificationService {
         // 사용자 참여 중인지 확인
         ChallengeParticipation participation = participationRepository
                 .findByChallenge_ChallengeIdAndUserIdAndLeftAtIsNull(round.getChallenge().getChallengeId(), userId)
-                .orElseThrow(() -> new IllegalStateException("참여 중인 챌린지가 아닙니다."));
+                .orElseThrow(() -> new BusinessException(ApiErrorCode.FORBIDDEN, "참여 중인 챌린지가 아닙니다."));
 
         // 회차당 1건 제한
         if (certificationRepository.existsByParticipation_ParticipationIdAndRound_RoundId(
                 participation.getParticipationId(), roundId)) {
-            throw new IllegalStateException("이미 해당 회차에 인증했습니다.");
+            throw new BusinessException(ApiErrorCode.ALREADY_CERTIFIED, "이미 해당 회차에 인증했습니다.");
         }
 
         Certification certification = Certification.builder()
@@ -70,7 +72,7 @@ public class CertificationService {
     public void update(Long userId, Long certId, CertificationUpdateRequest req) {
         Certification cert = certificationRepository
                 .findByCertificationIdAndParticipation_UserId(certId, userId)
-                .orElseThrow(() -> new SecurityException("수정 권한이 없습니다."));
+                .orElseThrow(() -> new BusinessException(ApiErrorCode.FORBIDDEN, "수정 권한이 없습니다."));
 
         if (req.getAmount() != null) cert.setAmount(req.getAmount());
         if (req.getComment() != null) cert.setComment(req.getComment());
@@ -83,7 +85,7 @@ public class CertificationService {
     public void delete(Long userId, Long certId) {
         Certification cert = certificationRepository
                 .findByCertificationIdAndParticipation_UserId(certId, userId)
-                .orElseThrow(() -> new SecurityException("삭제 권한이 없습니다."));
+                .orElseThrow(() -> new BusinessException(ApiErrorCode.FORBIDDEN, "삭제 권한이 없습니다."));
 
         certificationRepository.delete(cert);
     }
@@ -92,7 +94,7 @@ public class CertificationService {
     public boolean updateReturnFlag(Long userId, Long certId, CertificationUpdateRequest req) {
         var certification = certificationRepository
                 .findByCertificationIdAndParticipation_UserId(certId, userId)
-                .orElseThrow(() -> new SecurityException("수정 권한이 없습니다."));
+                .orElseThrow(() -> new BusinessException(ApiErrorCode.FORBIDDEN, "수정 권한이 없습니다."));
         boolean changed = false;
         if (req.getAmount() != null) {
             certification.setAmount(req.getAmount());
@@ -175,7 +177,7 @@ public class CertificationService {
 
         var challengeParticipation = participationRepository
                 .findByChallenge_ChallengeIdAndUserIdAndLeftAtIsNull(challengeId, userId)
-                .orElseThrow(() -> new IllegalStateException("참여 중이 아닙니다."));
+                .orElseThrow(() -> new BusinessException(ApiErrorCode.FORBIDDEN, "참여 중인 챌린지가 아닙니다."));
 
         var participationChallenge = challengeParticipation.getChallenge();
 

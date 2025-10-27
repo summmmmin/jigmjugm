@@ -2,10 +2,12 @@ package com.jigmjugm.challenge.controller;
 
 import com.jigmjugm.challenge.dto.ParticipationResponse;
 import com.jigmjugm.challenge.service.ChallengeParticipationService;
+import com.jigmjugm.security.UserPrincipal;
 import io.swagger.v3.oas.annotations.Operation;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -18,22 +20,19 @@ public class ChallengeParticipationController {
 
     private final ChallengeParticipationService participationService;
 
-    // TODO: 실제 사용자아이디로
-    private Long mockUserId() { return 1L; }
-
     // 참여하기
     @PostMapping("/challenges/{challengeId}/participants")
     @Operation(summary = "챌린지 참여하기")
-    public ResponseEntity<ParticipationResponse> join(@PathVariable Long challengeId) {
-        ParticipationResponse res = participationService.joinChallenge(mockUserId(), challengeId);
+    public ResponseEntity<ParticipationResponse> join(@AuthenticationPrincipal UserPrincipal principal, @PathVariable Long challengeId) {
+        ParticipationResponse res = participationService.joinChallenge(principal.getUserId(), challengeId);
         return ResponseEntity.status(HttpStatus.CREATED).body(res);
     }
 
     // 나가기
     @DeleteMapping("/participants/{participationId}")
     @Operation(summary = "챌린지 나가기")
-    public ResponseEntity<Void> leave(@PathVariable Long participationId) {
-        participationService.leaveChallenge(mockUserId(), participationId);
+    public ResponseEntity<Void> leave(@AuthenticationPrincipal UserPrincipal principal, @PathVariable Long participationId) {
+        participationService.leaveChallenge(principal.getUserId(), participationId);
         return ResponseEntity.noContent().build();
     }
 

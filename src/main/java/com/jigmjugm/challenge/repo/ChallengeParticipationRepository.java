@@ -39,7 +39,7 @@ public interface ChallengeParticipationRepository extends JpaRepository<Challeng
       join p.challenge c
       where c.isDeleted = false
         and p.userId = :userId
-        and (:includeWithdrawn = true or p.leftAt is not null)
+        and (:includeWithdrawn = true or p.leftAt is null)
         and (:category = 'ALL' or c.categoryType = :category)
         and (
           :status is null

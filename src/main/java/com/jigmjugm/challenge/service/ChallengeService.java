@@ -143,7 +143,7 @@ public class ChallengeService {
         }
         if ("WEEKLY".equalsIgnoreCase(req.getFrequencyType())) {
             if (req.getWeeklyDays() == null || req.getWeeklyDays().isEmpty()) {
-                throw new IllegalArgumentException("WEEKLY의 경우 요일(weeklyDays)은 필수입니다.");
+                throw new BusinessException(ApiErrorCode.INVALID_INPUT_VALUE, "WEEKLY의 경우 요일(weeklyDays)은 필수입니다.");
             }
         }
     }
