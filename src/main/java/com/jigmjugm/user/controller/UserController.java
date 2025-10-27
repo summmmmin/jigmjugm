@@ -1,8 +1,8 @@
-package com.jigmjugm.controller;
+package com.jigmjugm.user.controller;
 
-import com.jigmjugm.domain.user.entity.UserAccount;
-import com.jigmjugm.domain.user.repository.UserAccountRepository;
-import com.jigmjugm.dto.UserProfileResponse;
+import com.jigmjugm.user.entity.UserAccount;
+import com.jigmjugm.user.repository.UserAccountRepository;
+import com.jigmjugm.user.dto.UserProfileResponse;
 import com.jigmjugm.security.dto.CustomOAuth2User;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -17,6 +17,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/users")
 @RequiredArgsConstructor
+@Deprecated
 public class UserController {
 
     private final UserAccountRepository userAccountRepository;

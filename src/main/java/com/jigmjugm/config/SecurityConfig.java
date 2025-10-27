@@ -1,7 +1,8 @@
 package com.jigmjugm.config;
 
-import com.jigmjugm.security.CustomOAuth2UserService;
-import com.jigmjugm.security.OAuth2AuthenticationSuccessHandler;
+import com.jigmjugm.security.JwtAuthenticationFilter;
+import com.jigmjugm.security.RestAccessDeniedHandler;
+import com.jigmjugm.security.RestAuthEntryPoint;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -15,27 +16,29 @@ import org.springframework.security.web.SecurityFilterChain;
 @RequiredArgsConstructor
 public class SecurityConfig {
 
-    private final CustomOAuth2UserService customOAuth2UserService;
-    private final OAuth2AuthenticationSuccessHandler oAuth2AuthenticationSuccessHandler;
+    private final JwtAuthenticationFilter jwtFilter;
+    private final RestAuthEntryPoint restAuthEntryPoint;
+    private final RestAccessDeniedHandler restAccessDeniedHandler;
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-        http
-            .csrf(csrf -> csrf.disable())
-            .sessionManagement(session -> session
-                .sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)
-            )
-            .authorizeHttpRequests(authorize -> authorize
-                .requestMatchers("/", "/health/**", "/login/**", "/oauth2/**", "/swagger-ui/**", "/v3/api-docs/**", "/swagger", "/actuator/**").permitAll()
-                .requestMatchers("/users/**", "/auth/**").authenticated()
-                .anyRequest().authenticated()
-            )
-            .oauth2Login(oauth2 -> oauth2
-                .userInfoEndpoint(userInfo -> userInfo
-                    .userService(customOAuth2UserService)
+        http.csrf(csrf->csrf.disable())
+                .sessionManagement(sm->sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .formLogin(fl->fl.disable())
+                .httpBasic(hb->hb.disable())
+                .oauth2Login(oauth->oauth.disable())
+                .authorizeHttpRequests(auth->auth
+                        .requestMatchers(
+                                "/auth/kakao",
+                                "/swagger-ui/**", "/v3/api-docs/**", "/actuator/**", "/health/**"
+                        ).permitAll()
+                        .anyRequest().authenticated()
                 )
-                .successHandler(oAuth2AuthenticationSuccessHandler)
-            );
+                .exceptionHandling(ex->ex
+                        .authenticationEntryPoint(restAuthEntryPoint)
+                        .accessDeniedHandler(restAccessDeniedHandler)
+                )
+                .addFilterBefore(jwtFilter, org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }

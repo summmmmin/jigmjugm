@@ -1,6 +1,6 @@
 package com.jigmjugm.security.dto;
 
-import com.jigmjugm.domain.user.entity.UserAccount;
+import com.jigmjugm.user.entity.UserAccount;
 import lombok.Getter;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;

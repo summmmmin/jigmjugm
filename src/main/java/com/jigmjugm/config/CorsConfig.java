@@ -11,8 +11,7 @@ public class CorsConfig {
     @Bean
     public WebMvcConfigurer corsConfigurer() {
         return new WebMvcConfigurer() {
-            @Override
-            public void addCorsMappings(CorsRegistry registry) {
+            @Override public void addCorsMappings(CorsRegistry registry) {
                 registry.addMapping("/**")
                     .allowedOrigins(
                         "http://localhost:5173",  // Vite React 개발 서버
@@ -20,9 +19,10 @@ public class CorsConfig {
                         "http://localhost:3000",  // CRA React 개발 서버
                         "http://localhost:3001"   // 대체 포트
                     )
-                    .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD")
+                    .allowedMethods("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD")
                     .allowedHeaders("*")
-                    .allowCredentials(true)
+                    .exposedHeaders("Authorization")
+                    .allowCredentials(false)
                     .maxAge(3600); // preflight 캐시 시간 (1시간)
             }
         };
