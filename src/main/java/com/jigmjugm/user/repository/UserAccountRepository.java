@@ -14,4 +14,7 @@ public interface UserAccountRepository extends JpaRepository<UserAccount, Long> 
     Optional<UserAccount> findByProviderUserId(String providerUserId);
     
     boolean existsByProviderUserId(String providerUserId);
+
+    boolean existsByNickname(String nickname);
+    Optional<UserAccount> findByNickname(String nickname);
 }

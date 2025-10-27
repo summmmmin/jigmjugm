@@ -17,6 +17,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/users")
 @RequiredArgsConstructor
+@Deprecated
 public class UserController {
 
     private final UserAccountRepository userAccountRepository;

@@ -29,7 +29,7 @@ public class SecurityConfig {
                 .oauth2Login(oauth->oauth.disable())
                 .authorizeHttpRequests(auth->auth
                         .requestMatchers(
-                                "/auth/kakao", "/auth/logout",
+                                "/auth/kakao",
                                 "/swagger-ui/**", "/v3/api-docs/**", "/actuator/**", "/health/**"
                         ).permitAll()
                         .anyRequest().authenticated()

@@ -4,10 +4,11 @@ import com.jigmjugm.auth.KakaoOAuthClient;
 import com.jigmjugm.auth.domain.RefreshToken;
 import com.jigmjugm.auth.dto.AuthResponse;
 import com.jigmjugm.auth.repo.RefreshTokenRepository;
-import com.jigmjugm.user.dto.UserProfileResponse;
 import com.jigmjugm.security.JwtTokenProvider;
+import com.jigmjugm.user.dto.UserProfileResponse;
 import com.jigmjugm.user.entity.UserAccount;
 import com.jigmjugm.user.repository.UserAccountRepository;
+import com.jigmjugm.user.service.NicknameService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -23,6 +24,8 @@ public class AuthService {
     private final UserAccountRepository userRepo;
     private final JwtTokenProvider jwt;
     private final RefreshTokenRepository refreshTokenRepository;
+    private final NicknameService nicknameService;
+
     @Value("${app.jwt.access-exp-seconds:3600}")
     private long accessExpSeconds;
 
@@ -41,10 +44,11 @@ public class AuthService {
 
         if (user == null) {
             isNew = true;
+            String nickname = nicknameService.generateUniqueNickname();
             user = userRepo.save(UserAccount.builder()
                     .provider("KAKAO")
                     .providerUserId(providerId)
-                    .nickname(profile.nickname())
+                    .nickname(nickname)
                     .build());
         } else {
             // (정책) 탈퇴 계정 로그인 차단하려면 여기서 예외 던지기
