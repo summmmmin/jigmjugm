@@ -22,5 +22,8 @@ public interface CertificationRepository extends JpaRepository<Certification, Lo
         and c.participation.challenge.challengeId = :challengeId
     """)
     List<Certification> findActiveByUserAndChallenge(Long userId, Long challengeId);
+
+    long countByParticipation_ParticipationIdAndCertificationStatus(Long participationId, String certificationStatus);
+
 }
 

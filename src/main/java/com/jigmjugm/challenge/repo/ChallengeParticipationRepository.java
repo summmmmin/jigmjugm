@@ -13,6 +13,19 @@ import java.util.Optional;
 
 public interface ChallengeParticipationRepository extends JpaRepository<ChallengeParticipation, Long> {
 
+    public interface StatsRow {
+        Long   getAvgTotalAmount();
+        Double getAvgCertRate();
+        Integer getTotalParticipants();
+    }
+
+    public interface RankedRow {
+        Long getUserId();
+        String getNickname();
+        Double getCertRate();
+        Integer getRank();
+    }
+
     boolean existsByChallenge_ChallengeIdAndUserIdAndLeftAtIsNull(Long challengeId, Long userId);
 
     List<ChallengeParticipation> findByChallenge_ChallengeIdAndLeftAtIsNull(Long challengeId);
@@ -52,4 +65,120 @@ public interface ChallengeParticipationRepository extends JpaRepository<Challeng
             Long userId, String category, String status, LocalDate today, boolean includeWithdrawn, Pageable pageable);
 
     List<ChallengeParticipation> findByUserIdAndLeftAtIsNull(Long userId);
+
+
+    @Query(value = """
+            with vars as (select :today::date as today),
+            participants as (
+              select p.participation_id
+              from challenge_participation p
+              where p.challenge_id = :challengeId and p.left_at is null
+            ),
+            rtotal as (
+              select count(*) as total_rounds
+              from challenge_round r
+              join challenge c on c.challenge_id = r.challenge_id
+              join vars v on true
+              where r.challenge_id = :challengeId
+                and r.scheduled_date between c.start_date and least(c.end_date, v.today)
+            ),
+            per as (
+              select
+                p.participation_id,
+                coalesce(sum(case when cf.certification_status = 'APPROVED' then cf.amount end), 0) as total_amount,
+                coalesce(sum(case when cf.certification_status = 'APPROVED' then 1 else 0 end), 0) as approved_cnt
+              from participants p
+              left join certification cf on cf.participation_id = p.participation_id
+              group by p.participation_id
+            )
+            select
+              coalesce(avg(per.total_amount),0)::bigint as avgTotalAmount,
+              case when rtotal.total_rounds > 0
+                   then coalesce(avg(per.approved_cnt::float / rtotal.total_rounds),0)
+                   else 0 end as avgCertRate,
+              (select count(*) from participants) as totalParticipants
+            from per
+            cross join rtotal
+            """, nativeQuery = true)
+    StatsRow statsByChallenge(Long challengeId, LocalDate today);
+
+    // ==== 기간 "일자 범위" 랭킹 (상세 recentRankings에서 사용) ====
+    @Query(value = """
+            with r as (
+              select round_id
+              from challenge_round
+              where challenge_id = :challengeId
+                and scheduled_date between :startInclusive and :endInclusive
+            ),
+            x as (
+              select
+                p.user_id as userId,
+                u.nickname as nickname,
+                (select count(*) from r) as scheduled_count,
+                coalesce(sum(case when cf.certification_status = 'APPROVED' then 1 else 0 end),0) as approved_count
+              from challenge_participation p
+              join user_account u on u.user_id = p.user_id
+              left join certification cf on cf.participation_id = p.participation_id
+                                        and cf.round_id in (select round_id from r)
+              where p.challenge_id = :challengeId
+                and p.left_at is null
+              group by p.user_id, u.nickname
+            ),
+            ranked as (
+              select
+                userId,
+                nickname,
+                case when scheduled_count > 0 then approved_count::float / scheduled_count else 0 end as certRate,
+                dense_rank() over(order by
+                  case when scheduled_count > 0 then approved_count::float / scheduled_count else 0 end desc,
+                  approved_count desc,
+                  userId asc
+                ) as rank
+              from x
+            )
+            select userId, nickname, certRate, rank
+            from ranked
+            order by rank asc
+            limit :limit
+            """, nativeQuery = true)
+    List<RankedRow> rankingTopRange(Long challengeId, LocalDate startInclusive, LocalDate endInclusive, int limit);
+
+    @Query(value = """
+            with r as (
+              select round_id
+              from challenge_round
+              where challenge_id = :challengeId
+                and scheduled_date between :startInclusive and :endInclusive
+            ),
+            x as (
+              select
+                p.user_id as userId,
+                (select count(*) from r) as scheduled_count,
+                coalesce(sum(case when cf.certification_status = 'APPROVED' then 1 else 0 end),0) as approved_count
+              from challenge_participation p
+              left join certification cf on cf.participation_id = p.participation_id
+                                        and cf.round_id in (select round_id from r)
+              where p.challenge_id = :challengeId
+                and p.left_at is null
+              group by p.user_id
+            ),
+            ranked as (
+              select
+                userId,
+                case when scheduled_count > 0 then approved_count::float / scheduled_count else 0 end as certRate,
+                dense_rank() over(order by
+                  case when scheduled_count > 0 then approved_count::float / scheduled_count else 0 end desc,
+                  approved_count desc,
+                  userId asc
+                ) as rank
+              from x
+            )
+            select userId, certRate, rank
+            from ranked
+            where userId = :userId
+            """, nativeQuery = true)
+    List<RankedRow> rankingMeRange(Long challengeId, Long userId, LocalDate startInclusive, LocalDate endInclusive);
+
+    Optional<ChallengeParticipation>findFirstByChallenge_ChallengeIdAndUserIdAndLeftAtIsNull(Long challengeId, Long userId);
+
 }
