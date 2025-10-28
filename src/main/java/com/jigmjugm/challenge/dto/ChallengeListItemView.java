@@ -8,9 +8,14 @@ public interface ChallengeListItemView {
     String getTitle();
     String getCategoryType();
     String getFrequencyType();
+    Integer getPerRoundAmount();
+    Long getGoalAmount();
     LocalDate getStartDate();
     LocalDate getEndDate();
     OffsetDateTime getCreatedAt();
     String getThumbnailUrl();
-    String getStatus(); // PENDING | ACTIVE | COMPLETED
+    Integer getParticipantCount();
+    Double getAvgCertRate();
+    String getStatus();// PENDING | ACTIVE | COMPLETED
+
 }
