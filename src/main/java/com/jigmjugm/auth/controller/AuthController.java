@@ -1,5 +1,6 @@
 package com.jigmjugm.auth.controller;
 
+import com.jigmjugm.auth.domain.LogoutRequest;
 import com.jigmjugm.auth.dto.AuthResponse;
 import com.jigmjugm.auth.dto.KakaoTokenExchangeRequest;
 import com.jigmjugm.auth.service.AuthService;
@@ -52,11 +53,9 @@ public class AuthController {
     @PostMapping("/logout")
     public ResponseEntity<Void> logout(
             @AuthenticationPrincipal UserPrincipal principal,
-            @RequestBody Map<String,Object> body) {
+            @Valid @RequestBody LogoutRequest body) {
         if (principal == null) return ResponseEntity.status(401).build();
-        String refreshToken = (String) body.get("refreshToken");
-        boolean allDevices = body.get("allDevices") != null && (boolean) body.get("allDevices");
-        authService.logout(principal.getUserId(), refreshToken, allDevices);
+        authService.logout(principal.getUserId(), body.getRefreshToken(), Boolean.TRUE.equals(body.getAllDevices()));
         return ResponseEntity.noContent().build();
     }
 }
