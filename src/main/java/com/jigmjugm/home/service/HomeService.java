@@ -92,7 +92,7 @@ public class HomeService {
     }
 
     private List<HomeResponse.MyUpcomingItem> buildMyUpcoming(Long userId, int limit, LocalDate today) {
-        var parts = participationRepository.findByUserIdAndLeftAtIsNull(userId);
+        var parts = participationRepository.findActiveByUserExcludingDeleted(userId);
         if (parts.isEmpty()) return List.of();
 
         var result = new ArrayList<HomeResponse.MyUpcomingItem>();

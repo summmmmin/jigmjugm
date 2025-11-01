@@ -58,4 +58,5 @@ public class AuthController {
         authService.logout(principal.getUserId(), body.getRefreshToken(), Boolean.TRUE.equals(body.getAllDevices()));
         return ResponseEntity.noContent().build();
     }
+
 }

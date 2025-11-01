@@ -125,7 +125,7 @@ public interface ChallengeRepository  extends JpaRepository<Challenge, Long> {
     // 최근 인증 활발
     @Query(value = """
         with period as (
-          select :today::date as today, (:today::date - (:periodDays||' days')::interval)::date as since
+          select (:today)::date as today, ((:today)::date - (:periodDays||' days')::interval)::date as since
         )
         select 
           c.challenge_id as challengeId,
@@ -175,7 +175,7 @@ public interface ChallengeRepository  extends JpaRepository<Challenge, Long> {
 
     @Query(value = """
             with period as (
-              select :today::date as today, (:today::date - (:periodDays - 1) * interval '1 day')::date as since
+              select (:today)::date as today, ((:today)::date - (:periodDays - 1) * interval '1 day')::date as since
             ),
             approved_in_period as (
               select p.user_id, r.challenge_id, count(*) as approved_cnt

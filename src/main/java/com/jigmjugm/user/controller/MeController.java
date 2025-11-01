@@ -11,10 +11,11 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/v1")
+@RequestMapping
 @RequiredArgsConstructor
 public class MeController {
 
@@ -50,7 +51,7 @@ public class MeController {
 
         return ResponseEntity.ok(NicknameResponse.builder()
                 .nickname(nickname)
-                .changedAt(java.time.LocalDateTime.now()) // 저장된 updatedAt을 반환해도 무방
+                .changedAt(LocalDateTime.now()) // 저장된 updatedAt을 반환해도 무방
                 .build());
     }
 
@@ -62,5 +63,7 @@ public class MeController {
         userAccountRepository.save(user);
         return ResponseEntity.noContent().build();
     }
+
+
 }
 

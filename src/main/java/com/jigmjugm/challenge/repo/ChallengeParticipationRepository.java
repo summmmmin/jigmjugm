@@ -66,9 +66,19 @@ public interface ChallengeParticipationRepository extends JpaRepository<Challeng
 
     List<ChallengeParticipation> findByUserIdAndLeftAtIsNull(Long userId);
 
+    @Query("""
+        select p
+        from ChallengeParticipation p
+        join fetch p.challenge c
+        where p.userId = :userId
+          and p.leftAt is null
+          and c.isDeleted = false
+    """)
+    List<ChallengeParticipation> findActiveByUserExcludingDeleted(Long userId);
+
 
     @Query(value = """
-            with vars as (select :today::date as today),
+            with vars as (select (:today)::date as today),
             participants as (
               select p.participation_id
               from challenge_participation p
@@ -92,11 +102,9 @@ public interface ChallengeParticipationRepository extends JpaRepository<Challeng
               group by p.participation_id
             )
             select
-              coalesce(avg(per.total_amount),0)::bigint as avgTotalAmount,
-              case when rtotal.total_rounds > 0
-                   then coalesce(avg(per.approved_cnt::float / rtotal.total_rounds),0)
-                   else 0 end as avgCertRate,
-              (select count(*) from participants) as totalParticipants
+              coalesce(avg(per.total_amount),0)::bigint                             as avgTotalAmount,
+              coalesce( avg(per.approved_cnt::float) / nullif(max(rtotal.total_rounds),0), 0 ) as avgCertRate,
+              (select count(*)::int from participants)                               as totalParticipants
             from per
             cross join rtotal
             """, nativeQuery = true)
@@ -110,35 +118,46 @@ public interface ChallengeParticipationRepository extends JpaRepository<Challeng
               where challenge_id = :challengeId
                 and scheduled_date between :startInclusive and :endInclusive
             ),
+            sc as (
+              select count(*)::int as scheduled_count from r
+            ),
             x as (
               select
-                p.user_id as userId,
-                u.nickname as nickname,
-                (select count(*) from r) as scheduled_count,
-                coalesce(sum(case when cf.certification_status = 'APPROVED' then 1 else 0 end),0) as approved_count
+                p.user_id                                    as userId,
+                u.nickname                                   as nickname,
+                sc.scheduled_count                           as scheduled_count,
+                coalesce(sum(case
+                  when rr.round_id is not null and cf.certification_status = 'APPROVED' then 1 else 0 end), 0)::int
+                  as approved_count
               from challenge_participation p
               join user_account u on u.user_id = p.user_id
+              cross join sc
               left join certification cf on cf.participation_id = p.participation_id
-                                        and cf.round_id in (select round_id from r)
+              left join r rr on rr.round_id = cf.round_id
               where p.challenge_id = :challengeId
                 and p.left_at is null
-              group by p.user_id, u.nickname
+              group by p.user_id, u.nickname, sc.scheduled_count
             ),
             ranked as (
               select
                 userId,
                 nickname,
-                case when scheduled_count > 0 then approved_count::float / scheduled_count else 0 end as certRate,
-                dense_rank() over(order by
-                  case when scheduled_count > 0 then approved_count::float / scheduled_count else 0 end desc,
-                  approved_count desc,
-                  userId asc
-                ) as rank
+                case when scheduled_count > 0
+                     then approved_count::float / scheduled_count
+                     else 0 end                as certRate,
+                dense_rank() over (
+                  order by
+                    case when scheduled_count > 0
+                         then approved_count::float / scheduled_count
+                         else 0 end desc,
+                    approved_count desc,
+                    userId asc
+                )                              as rank_no
               from x
             )
-            select userId, nickname, certRate, rank
+            select userId, nickname, certRate, rank_no as rank
             from ranked
-            order by rank asc
+            order by rank_no asc
             limit :limit
             """, nativeQuery = true)
     List<RankedRow> rankingTopRange(Long challengeId, LocalDate startInclusive, LocalDate endInclusive, int limit);
@@ -150,30 +169,41 @@ public interface ChallengeParticipationRepository extends JpaRepository<Challeng
               where challenge_id = :challengeId
                 and scheduled_date between :startInclusive and :endInclusive
             ),
+            sc as (
+              select count(*)::int as scheduled_count from r
+            ),
             x as (
               select
-                p.user_id as userId,
-                (select count(*) from r) as scheduled_count,
-                coalesce(sum(case when cf.certification_status = 'APPROVED' then 1 else 0 end),0) as approved_count
+                p.user_id                                    as userId,
+                sc.scheduled_count                           as scheduled_count,
+                coalesce(sum(case
+                  when rr.round_id is not null and cf.certification_status = 'APPROVED' then 1 else 0 end), 0)::int
+                  as approved_count
               from challenge_participation p
+              cross join sc
               left join certification cf on cf.participation_id = p.participation_id
-                                        and cf.round_id in (select round_id from r)
+              left join r rr on rr.round_id = cf.round_id
               where p.challenge_id = :challengeId
                 and p.left_at is null
-              group by p.user_id
+              group by p.user_id, sc.scheduled_count
             ),
             ranked as (
               select
                 userId,
-                case when scheduled_count > 0 then approved_count::float / scheduled_count else 0 end as certRate,
-                dense_rank() over(order by
-                  case when scheduled_count > 0 then approved_count::float / scheduled_count else 0 end desc,
-                  approved_count desc,
-                  userId asc
-                ) as rank
+                case when scheduled_count > 0
+                     then approved_count::float / scheduled_count
+                     else 0 end                as certRate,
+                dense_rank() over (
+                  order by
+                    case when scheduled_count > 0
+                         then approved_count::float / scheduled_count
+                         else 0 end desc,
+                    approved_count desc,
+                    userId asc
+                )                              as rank_no
               from x
             )
-            select userId, certRate, rank
+            select userId, certRate, rank_no as rank
             from ranked
             where userId = :userId
             """, nativeQuery = true)

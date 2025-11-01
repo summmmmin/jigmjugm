@@ -39,18 +39,23 @@ public class Certification {
     private String imageUrl; // S3 URL
 
     @Column(nullable = false, length = 1)
+    @Builder.Default
     private String doubleYn = "N"; // Y/N
 
     @Column(nullable = false, length = 16)
+    @Builder.Default
     private String certificationStatus = "APPROVED"; // 일단 항상 APPROVED로 처리
 
     @Column(nullable = false)
+    @Builder.Default
     private OffsetDateTime certifiedAt = OffsetDateTime.now(ZoneOffset.UTC);
 
     @Column(nullable = false)
+    @Builder.Default
     private OffsetDateTime createdAt = OffsetDateTime.now(ZoneOffset.UTC);
 
     @Column(nullable = false)
+    @Builder.Default
     private OffsetDateTime updatedAt = OffsetDateTime.now(ZoneOffset.UTC);
 }
 
