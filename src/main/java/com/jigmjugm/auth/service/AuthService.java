@@ -4,6 +4,7 @@ import com.jigmjugm.auth.KakaoOAuthClient;
 import com.jigmjugm.auth.domain.RefreshToken;
 import com.jigmjugm.auth.dto.AuthResponse;
 import com.jigmjugm.auth.repo.RefreshTokenRepository;
+import com.jigmjugm.common.error.BusinessException;
 import com.jigmjugm.security.JwtTokenProvider;
 import com.jigmjugm.user.dto.UserProfileResponse;
 import com.jigmjugm.user.entity.UserAccount;
@@ -16,6 +17,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.Objects;
+
+import static com.jigmjugm.common.error.ApiErrorCode.FORBIDDEN;
 
 @Service
 @RequiredArgsConstructor
@@ -41,7 +44,7 @@ public class AuthService {
 
         UserAccount user = userRepo.findByProviderAndProviderUserId("KAKAO", providerId)
                 .orElse(null);
-
+        System.out.println(user);
         if (user == null) {
             isNew = true;
             String nickname = nicknameService.generateUniqueNickname();
@@ -52,9 +55,11 @@ public class AuthService {
                     .build());
         } else {
             // (정책) 탈퇴 계정 로그인 차단하려면 여기서 예외 던지기
-            // if (user.isDeleted()) throw new AccountWithdrawnException();
-            user.updateNickname(profile.nickname()); // 트랜잭션 안이면 save 불필요
+            //if (user.isDeleted()) throw new AccountWithdrawnException();
+            //user.updateNickname(profile.nickname()); // 트랜잭션 안이면 save 불필요
+            if (user.isDeleted()) throw new BusinessException(FORBIDDEN, "탈퇴한 계정입니다.");
         }
+
 
         String at = jwt.generateAccessToken(user);
         String rt = jwt.generateRefreshToken(user.getUserId());

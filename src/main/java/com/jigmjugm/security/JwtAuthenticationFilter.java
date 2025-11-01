@@ -39,7 +39,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                     SecurityContextHolder.getContext().setAuthentication(auth);
                 }
-            } catch (Exception ignore) { /* 유효하지 않으면 인증 미설정 → 401은 엔드포인트에서 처리 */ }
+            } catch (Exception ignore) { SecurityContextHolder.clearContext(); }
         }
         chain.doFilter(request, response);
     }

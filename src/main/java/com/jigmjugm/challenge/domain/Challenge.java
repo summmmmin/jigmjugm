@@ -35,7 +35,8 @@ public class Challenge {
     private String thumbnailUrl;
 
     @Column(nullable = false) private Boolean isDeleted = false;
-    @Column(nullable = false) private OffsetDateTime createdAt = OffsetDateTime.now(ZoneOffset.UTC);
+    @Column(nullable = false)
+    private OffsetDateTime createdAt = OffsetDateTime.now(ZoneOffset.UTC);
     @Column(nullable = false) private OffsetDateTime updatedAt = OffsetDateTime.now(ZoneOffset.UTC);
 
     @OneToMany(mappedBy = "challenge", cascade = CascadeType.ALL, orphanRemoval = true)

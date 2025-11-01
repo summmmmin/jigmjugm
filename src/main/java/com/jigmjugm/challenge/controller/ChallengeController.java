@@ -27,7 +27,7 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/v1/challenges")
+@RequestMapping("/challenges")
 @RequiredArgsConstructor
 public class ChallengeController {
     private final ChallengeService challengeService;
@@ -49,9 +49,9 @@ public class ChallengeController {
     @Operation(summary = "챌린지 상세 조회")
     public ResponseEntity<ChallengeDetailResponse> get(@AuthenticationPrincipal UserPrincipal principal, @PathVariable Long challengeId) {
         Challenge challenge = challengeService.getDetail(challengeId);
+        LocalDate today = LocalDate.now(ZoneId.of("Asia/Seoul"));
 
-        String status = policy.computeStatus(challenge.getStartDate(), challenge.getEndDate(),
-                LocalDate.now(ZoneId.of("Asia/Seoul")));
+        String status = policy.computeStatus(challenge.getStartDate(), challenge.getEndDate(), today);
 
         var stats = challengeStatsService.stats(challengeId);
         var recent = challengeStatsService.recentRanking(challengeId, principal);
@@ -75,12 +75,12 @@ public class ChallengeController {
 
                 // 내 인증률 = (시작~오늘 사이 예정 회차 수 대비 승인 수)
                 int scheduled = challengeRoundRepository.countByChallenge_ChallengeIdAndScheduledDateBetween(
-                        challengeId, challenge.getStartDate(), java.time.LocalDate.now(java.time.ZoneId.of("Asia/Seoul")));
+                        challengeId, challenge.getStartDate(), today);
                 double myRate = (scheduled > 0) ? ((double) approved / (double) scheduled) : 0.0;
-
+                String myState = (p.getLeftAt() == null) ? "ACTIVE" : "LEFT";
                 myParticipation = new ChallengeDetailResponse.MyParticipation(
                         p.getParticipationId(),
-                        "ACTIVE",
+                        myState,
                         p.getJoinedAt(),
                         p.getLeftAt(),
                         (int) approved,
@@ -90,7 +90,7 @@ public class ChallengeController {
 
                 var nextOpt = challengeRoundRepository
                         .findFirstByChallenge_ChallengeIdAndScheduledDateGreaterThanEqualOrderByScheduledDateAsc(
-                                challengeId, LocalDate.now(ZoneId.of("Asia/Seoul")));
+                                challengeId, today);
                 myNextScheduledDate = nextOpt.map(ChallengeRound::getScheduledDate).orElse(null);
 
                 canEdit = "OWNER".equals(p.getRoleType());
@@ -111,7 +111,7 @@ public class ChallengeController {
                 .endDate(challenge.getEndDate())
                 .createdAt(challenge.getCreatedAt())
                 .thumbnailUrl(challenge.getThumbnailUrl())
-                .totalRounds(challenge.getRounds().size())
+                .totalRounds(challengeRoundRepository.countByChallenge_ChallengeId(challengeId))
                 .status(status)
                 .participantCount(stats.totalParticipants())
                 .avgCertRate(stats.avgCertRate())

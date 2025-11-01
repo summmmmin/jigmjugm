@@ -17,9 +17,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.OffsetDateTime;
 import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
@@ -61,12 +64,13 @@ public class ChallengeService {
         List<LocalDate> schedule = policy.buildSchedule(
                 saved.getFrequencyType(), saved.getWeeklyDaysMask(),
                 saved.getStartDate(), saved.getEndDate());
-        makeRounds(saved, schedule);
+        makeRoundsFrom(saved, schedule, 1);
 
         var owner = ChallengeParticipation.builder()
                 .challenge(saved)
                 .userId(creatorUserId)
                 .roleType("OWNER")
+                .joinedAt(OffsetDateTime.now(ZoneOffset.UTC))
                 .build();
         participationRepo.save(owner);
 
@@ -119,19 +123,47 @@ public class ChallengeService {
         challenge.setThumbnailUrl(challengeCreateRequest.getThumbnailUrl());
 
         // 회차 재생성
-        challenge.getRounds().clear();
-        var schedule = policy.buildSchedule(challenge.getFrequencyType(), challenge.getWeeklyDaysMask(), challenge.getStartDate(), challenge.getEndDate());
-        makeRounds(challenge, schedule);
+        // === 미래 회차만 갱신 ===
+        LocalDate today = LocalDate.now(ZoneId.of("Asia/Seoul"));
+
+        // 1) 미래 회차 선삭제 (DB)
+        roundRepo.deleteFutureRounds(challengeId, today);
+
+        // 2) 영속 컬렉션에서도 제거 (정합성 유지)
+        challenge.getRounds().removeIf(r -> r.getScheduledDate().isAfter(today));
+
+        // 3) 현재까지의 최댓 roundNo 조회
+        int baseRoundNo = roundRepo.findMaxRoundNoUpTo(challengeId, today);
+
+        // 4) 새 스케줄 생성 후 미래 날짜만 필터
+        List<LocalDate> raw = policy.buildSchedule(
+                challenge.getFrequencyType(),
+                challenge.getWeeklyDaysMask(),
+                challenge.getStartDate(),
+                challenge.getEndDate()
+        );
+
+        List<LocalDate> future = raw.stream()
+                .filter(d -> d.isAfter(today))
+                .distinct()
+                .sorted()
+                .toList();
+
+        // 5) 미래 회차 재생성(번호 이어붙이기)
+        makeRoundsFrom(challenge, future, baseRoundNo + 1);
         return true;
     }
 
     @Transactional
     public void softDelete(Long challengeId, Long userId) {
-        Challenge challenge = getDetail(challengeId);
-        if (!challenge.getCreatorUserId().equals(userId)) {
+        Challenge challenge = challengeRepo.findById(challengeId)
+                .orElseThrow(() -> new BusinessException(ApiErrorCode.NOT_FOUND, "챌린지를 찾을 수 없습니다."));
+
+        if (!Objects.equals(challenge.getCreatorUserId(), userId)) {
             throw new BusinessException(ApiErrorCode.FORBIDDEN, "권한이 없습니다.");
         }
-        challenge.setIsDeleted(true);
+
+        challenge.setIsDeleted(true); // 변경감지 → UPDATE 발생
     }
 
     private void validateBusiness(ChallengeCreateRequest req) {
@@ -157,6 +189,19 @@ public class ChallengeService {
             challengeRound.setScheduledDate(localDate);
             challengeRound.setBaseAmount(saved.getPerRoundAmount());
             saved.getRounds().add(challengeRound);
+        }
+    }
+
+    // idx포함해서 수정할때도 지난건두고 이후만 수정할수있도록
+    private void makeRoundsFrom(Challenge challenge, List<LocalDate> schedule, int startRoundNo) {
+        int idx = startRoundNo;
+        for (LocalDate date : schedule) {
+            ChallengeRound round = new ChallengeRound();
+            round.setChallenge(challenge);
+            round.setRoundNo(idx++);
+            round.setScheduledDate(date);
+            round.setBaseAmount(challenge.getPerRoundAmount());
+            challenge.getRounds().add(round);
         }
     }
 }

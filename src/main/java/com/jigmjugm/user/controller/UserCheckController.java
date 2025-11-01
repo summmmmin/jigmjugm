@@ -1,5 +1,7 @@
 package com.jigmjugm.user.controller;
 
+import com.jigmjugm.common.error.ApiErrorCode;
+import com.jigmjugm.common.error.BusinessException;
 import com.jigmjugm.user.repository.UserAccountRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -12,7 +14,7 @@ import java.util.Map;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/v1/users")
+@RequestMapping("/users")
 public class UserCheckController {
     private final UserAccountRepository userAccountRepository;
 
@@ -20,8 +22,7 @@ public class UserCheckController {
     public ResponseEntity<Map<String,Object>> checkNickname(@RequestParam String nickname) {
         String n = nickname == null? "" : nickname.trim();
         if (!n.matches("^[가-힣A-Za-z0-9]{2,16}$")) {
-            return ResponseEntity.badRequest().body(
-                    Map.of("code","VALIDATION_ERROR","message","2~16자, 공백/특수문자 불가"));
+            throw new BusinessException(ApiErrorCode.INVALID_INPUT_VALUE, "2~16자, 공백/특수문자 불가");
         }
         boolean dup = userAccountRepository.existsByNickname(n);
         return ResponseEntity.ok(Map.of("available", !dup));

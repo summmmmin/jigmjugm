@@ -19,7 +19,7 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class KakaoOAuthClient {
     @Value("${app.kakao.userinfo-url}") private String userinfoUrl;
-    private final org.springframework.web.reactive.function.client.WebClient webClient = WebClient.create();
+    private final WebClient webClient = WebClient.create();
 
     public KakaoProfile getProfile(String kakaoAccessToken) {
         try {

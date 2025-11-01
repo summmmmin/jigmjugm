@@ -27,17 +27,21 @@ public class ChallengeParticipation {
     @Column(nullable = false)
     private Long userId;
 
+    @Builder.Default
     @Column(nullable = false, length = 16)
     private String roleType = "MEMBER"; // OWNER / MEMBER
 
+    @Builder.Default
     @Column(nullable = false)
     private OffsetDateTime joinedAt = OffsetDateTime.now(ZoneOffset.UTC);
 
     private OffsetDateTime leftAt;
 
+    @Builder.Default
     @Column(nullable = false)
     private OffsetDateTime createdAt = OffsetDateTime.now(ZoneOffset.UTC);
 
+    @Builder.Default
     @Column(nullable = false)
     private OffsetDateTime updatedAt = OffsetDateTime.now(ZoneOffset.UTC);
 }

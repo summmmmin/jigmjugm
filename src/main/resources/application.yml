@@ -2,9 +2,9 @@ spring:
   application:
     name: jigmjugm
   datasource:
-    url: jdbc:postgresql://localhost:5432/jigmjugm
-    username: jj_user
-    password: jj_pass
+    url: ${DATASOURCE_URL}
+    username: ${DATASOURCE_USER_NAME}
+    password: ${DATASOURCE_PASSWORD}
   jpa:
     hibernate:
       ddl-auto: validate
@@ -23,7 +23,7 @@ spring:
           kakao:
             client-id: ${KAKAO_CLIENT_ID}
             client-secret: ${KAKAO_CLIENT_SECRET}
-            redirect-uri: http://localhost:8080/api/v1/login/oauth2/code/kakao
+            redirect-uri: http://api.savenow.kr/api/v1/login/oauth2/code/kakao
             authorization-grant-type: authorization_code
             client-authentication-method: client_secret_post
             scope:
@@ -48,7 +48,9 @@ management:
 
 springdoc:
   api-docs:
+    enabled: true
     path: /v3/api-docs
+
   swagger-ui:
     path: /swagger
 
