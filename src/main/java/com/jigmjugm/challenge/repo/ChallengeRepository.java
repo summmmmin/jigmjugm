@@ -147,7 +147,8 @@ public interface ChallengeRepository  extends JpaRepository<Challenge, Long> {
              when c.start_date <= :today and c.end_date >= :today then 'ACTIVE'
              else 'COMPLETED'
            end) as status,
-          c.per_round_amount as perRoundAmount
+          c.per_round_amount as perRoundAmount,
+          (select nickname from user_account where user_id = c.creator_user_id ) creatorNickname
         from challenge c
         cross join period
         left join (
@@ -302,4 +303,5 @@ public interface ChallengeRepository  extends JpaRepository<Challenge, Long> {
     Page<ChallengeListItemView> searchDiscoverOrderByTotalAmount(
             String category, String status, java.time.LocalDate today, Pageable pageable);
 
+    long countByCreatorUserIdAndIsDeletedFalse(Long creatorUserId);
 }

@@ -8,9 +8,12 @@ import com.jigmjugm.challenge.repo.ChallengeParticipationRepository;
 import com.jigmjugm.challenge.repo.ChallengeRepository;
 import com.jigmjugm.challenge.repo.ChallengeRoundRepository;
 import com.jigmjugm.common.util.ChallengePolicy;
+import com.jigmjugm.home.dto.HomeRedisResponse;
 import com.jigmjugm.home.dto.HomeResponse;
+import com.jigmjugm.home.dto.HomeSection;
 import com.jigmjugm.home.repo.HomeChallengeItemView;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -49,7 +52,7 @@ public class HomeService {
                 mapToDto(challengeRepository.homeActive(category, today, periodDays, minParticipants, topN));
 
         // 로그인 상태일 때만 myUpcoming 조회
-        List<HomeResponse.MyUpcomingItem> myUpcoming = null;
+        List<HomeResponse.MyUpcomingItem> myUpcoming = List.of();
         if (userId != null) {
             myUpcoming = buildMyUpcoming(userId, myUpcomingLimit, today);
         }
@@ -86,6 +89,7 @@ public class HomeService {
                     .avgCertRate(v.getAvgCertRate())
                     .status(v.getStatus())
                     .perRoundAmount(v.getPerRoundAmount())
+                    .creatorNickname(v.getCreatorNickname())
                     .build());
         }
         return list;
@@ -148,5 +152,44 @@ public class HomeService {
             return result.subList(0, limit);
         }
         return result;
+    }
+
+
+    @Transactional(readOnly = true)
+    @Cacheable(cacheNames = "home:section", key = "'v2:' + #category + ':' + #limit + ':' + #periodDays + ':' + #minParticipants")
+    public HomeSection buildSectionCached(String category, int limit, int periodDays, int minParticipants) {
+        String normalizedCategory = normalizeCategory(category);
+        LocalDate today = LocalDate.now(ZoneId.of("Asia/Seoul"));
+        var topN = PageRequest.of(0, limit);
+
+        var startSoon = mapToDto(challengeRepository.homeStartSoon(normalizedCategory, today, topN));
+        var newest    = mapToDto(challengeRepository.homeNewest(normalizedCategory, today, topN));
+        var active    = mapToDto(challengeRepository.homeActive(normalizedCategory, today, periodDays, minParticipants, topN));
+
+        return HomeSection.builder()
+                .startSoon(startSoon)
+                .newest(newest)
+                .active(active)
+                .build();
+    }
+
+     // ALL/SAVING/INSTALLMENT/OTHER는 Redis 캐시, MYUPCOMING은 비캐시로 합산
+    @Transactional(readOnly = true)
+    public HomeRedisResponse buildHomeRedis(Long userId, int limit, int periodDays, int minParticipants, int myUpcomingLimit) {
+        HomeSection all         = buildSectionCached("ALL",         limit, periodDays, minParticipants);
+        HomeSection saving      = buildSectionCached("SAVING",      limit, periodDays, minParticipants);
+        HomeSection installment = buildSectionCached("INSTALLMENT", limit, periodDays, minParticipants);
+        HomeSection other       = buildSectionCached("OTHER",       limit, periodDays, minParticipants);
+
+        var myUpcoming = (userId == null) ? List.<HomeResponse.MyUpcomingItem>of()
+                : buildMyUpcoming(userId, myUpcomingLimit, LocalDate.now(ZoneId.of("Asia/Seoul")));
+
+        return HomeRedisResponse.builder()
+                .all(all)
+                .saving(saving)
+                .installment(installment)
+                .other(other)
+                .myUpcoming(myUpcoming)
+                .build();
     }
 }

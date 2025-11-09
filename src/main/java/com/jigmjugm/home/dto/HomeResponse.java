@@ -31,6 +31,7 @@ public class HomeResponse {
         private Double avgCertRate;       // active 섹션: 최근 기간 기준 인증률
         private String status;            // PENDING/ACTIVE/COMPLETED
         private Long perRoundAmount;
+        private String creatorNickname;
     }
 
     @Getter @Builder
