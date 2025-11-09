@@ -1,5 +1,7 @@
 package com.jigmjugm.user.controller;
 
+import com.jigmjugm.challenge.repo.ChallengeParticipationRepository;
+import com.jigmjugm.challenge.repo.ChallengeRepository;
 import com.jigmjugm.common.error.ApiErrorCode;
 import com.jigmjugm.common.error.BusinessException;
 import com.jigmjugm.security.UserPrincipal;
@@ -11,7 +13,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.Map;
 
 @RestController
@@ -20,17 +24,33 @@ import java.util.Map;
 public class MeController {
 
     private final UserAccountRepository userAccountRepository;
+    private final ChallengeParticipationRepository challengeParticipationRepository;
+    private final ChallengeRepository challengeRepository;
 
     @GetMapping("/me")
     public ResponseEntity<UserProfileResponse> me(@AuthenticationPrincipal UserPrincipal principal) {
         if (principal == null) return ResponseEntity.status(401).build();
         var user = userAccountRepository.findById(principal.getUserId()).orElseThrow();
+
+        var today = LocalDate.now(ZoneId.of("Asia/Seoul"));
+
+        long challengeCount = challengeParticipationRepository
+                .countMyActiveOrUpcoming(user.getUserId(), today);
+
+        long completedChallengeCount = challengeParticipationRepository
+                .countMyCompleted(user.getUserId(), today);
+
+        long createdChallengeCount = challengeRepository
+                .countByCreatorUserIdAndIsDeletedFalse(user.getUserId());
+
         return ResponseEntity.ok(UserProfileResponse.builder()
                 .userId(user.getUserId())
                 .nickname(user.getNickname())
                 .provider(user.getProvider())
                 .createdAt(user.getCreatedAt())
-                .challengeCount(0).completedChallengeCount(0).points(0).level(1)
+                .challengeCount(challengeCount)
+                .completedChallengeCount(completedChallengeCount)
+                .createdChallengeCount(createdChallengeCount)
                 .build());
     }
 

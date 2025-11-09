@@ -17,9 +17,8 @@ public class UserProfileResponse {
     private String provider;
     private LocalDateTime createdAt;
     
-    // 추가 정보 (향후 구현 예정)
-    private Integer challengeCount;
-    private Integer completedChallengeCount;
-    private Integer points;
-    private Integer level;
+    // 나의 챌린지 현황 정보
+    private long challengeCount;
+    private long completedChallengeCount;
+    private long createdChallengeCount;
 }

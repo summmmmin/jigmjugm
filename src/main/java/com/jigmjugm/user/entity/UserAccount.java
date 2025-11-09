@@ -54,6 +54,19 @@ public class UserAccount {
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
+    @Column(name = "username", unique = true, length = 50)
+    private String username;
+
+    @Column(name = "password_hash", length = 100)
+    private String passwordHash;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "role", nullable = false, length = 20)
+    @Builder.Default
+    private Role role = Role.USER;
+
+    public enum Role { USER, ADMIN }
+
     public void updateNickname(String nickname) {
         this.nickname = nickname;
     }
@@ -71,5 +84,16 @@ public class UserAccount {
 
     public void softDelete() {
         this.isDeleted = true;
+    }
+
+    public void setLocalCredentials(String username, String passwordHash) {
+        this.username = username;
+        this.passwordHash = passwordHash;
+        this.provider = "LOCAL";
+        this.providerUserId = username;
+    }
+
+    public boolean isLocal() {
+        return "LOCAL".equalsIgnoreCase(this.provider);
     }
 }

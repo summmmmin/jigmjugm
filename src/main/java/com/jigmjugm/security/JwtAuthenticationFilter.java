@@ -34,7 +34,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 Long userId = Long.valueOf(claims.getSubject());
                 var user = userRepo.findById(userId).orElse(null);
                 if (user != null && !user.isDeleted()) {
-                    var principal = new UserPrincipal(user.getUserId(), user.getNickname());
+                    var principal = new UserPrincipal(user.getUserId(), user.getNickname(), user.getRole().name());
                     var auth = new UsernamePasswordAuthenticationToken(principal, null, principal.getAuthorities());
                     auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                     SecurityContextHolder.getContext().setAuthentication(auth);

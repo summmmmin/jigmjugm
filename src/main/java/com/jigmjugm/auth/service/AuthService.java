@@ -12,6 +12,7 @@ import com.jigmjugm.user.repository.UserAccountRepository;
 import com.jigmjugm.user.service.NicknameService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,6 +29,7 @@ public class AuthService {
     private final JwtTokenProvider jwt;
     private final RefreshTokenRepository refreshTokenRepository;
     private final NicknameService nicknameService;
+    private final PasswordEncoder passwordEncoder;
 
     @Value("${app.jwt.access-exp-seconds:3600}")
     private long accessExpSeconds;
@@ -82,10 +84,6 @@ public class AuthService {
                         .nickname(user.getNickname())
                         .provider(user.getProvider())
                         .createdAt(user.getCreatedAt())
-                        .challengeCount(0)
-                        .completedChallengeCount(0)
-                        .points(0)
-                        .level(1)
                         .build())
                 .build();
     }
@@ -103,5 +101,80 @@ public class AuthService {
         }
         refreshTokenRepository.delete(row);
     }
+
+    @lombok.Value
+    public static class IdPwRegisterRequest{
+        String username;
+        String password;
+    }
+    @lombok.Value
+    public static class IdPwLoginRequest {
+        String username;
+        String password;
+    }
+    @lombok.Value
+    public static class Tokens {
+        String accessToken;
+        String refreshToken;
+    }
+
+    @Transactional
+    public Tokens registerIdPw(String username, String rawPassword) {
+        if (userRepo.existsByUsername(username)) {
+            throw new IllegalArgumentException("이미 존재하는 아이디입니다.");
+        }
+
+        var nick = nicknameService.generateUniqueNickname();
+        var user = UserAccount.builder()
+                .nickname(nick)
+                .role(UserAccount.Role.USER)
+                .build();
+        user.setLocalCredentials(username, passwordEncoder.encode(rawPassword));
+        var saved = userRepo.save(user);
+
+        var access  = jwt.generateAccessToken(saved);
+        var refresh = jwt.generateRefreshToken(saved.getUserId());
+
+        var refreshExp = jwt.getExpiration(refresh);
+
+        refreshTokenRepository.deleteAllByUserId(saved.getUserId());
+
+        var rt = new RefreshToken();
+        rt.setUserId(saved.getUserId());
+        rt.setToken(refresh);
+        rt.setExpiresAt(refreshExp);
+        rt.setRevokedAt(null);
+        refreshTokenRepository.save(rt);
+
+        return new Tokens(access, refresh);
+    }
+
+
+    @Transactional
+    public Tokens loginIdPw(String username, String rawPassword) {
+        var user = userRepo.findByUsername(username)
+                .orElseThrow(() -> new IllegalArgumentException("아이디 또는 비밀번호가 올바르지 않습니다."));
+        if (user.isDeleted()) throw new IllegalStateException("삭제된 계정입니다.");
+
+        if (user.getPasswordHash() == null || !passwordEncoder.matches(rawPassword, user.getPasswordHash())) {
+            throw new IllegalArgumentException("아이디 또는 비밀번호가 올바르지 않습니다.");
+        }
+        var access = jwt.generateAccessToken(user);
+        var refresh = jwt.generateRefreshToken(user.getUserId());
+
+        var refreshExp = jwt.getExpiration(refresh);
+
+        refreshTokenRepository.deleteAllByUserId(user.getUserId());
+
+        var rt = new RefreshToken();
+        rt.setUserId(user.getUserId());
+        rt.setToken(refresh);
+        rt.setExpiresAt(refreshExp);
+        rt.setRevokedAt(null);
+        refreshTokenRepository.save(rt);
+
+        return new Tokens(access, refresh);
+    }
+
 }
 
