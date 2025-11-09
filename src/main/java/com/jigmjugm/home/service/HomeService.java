@@ -182,7 +182,7 @@ public class HomeService {
         HomeSection other       = buildSectionCached("OTHER",       limit, periodDays, minParticipants);
 
         var myUpcoming = (userId == null) ? List.<HomeResponse.MyUpcomingItem>of()
-                : buildMyUpcoming(userId, myUpcomingLimit, LocalDate.now(ZoneId.of("Asia/Seoul")));
+                : getMyUpcoming(userId, myUpcomingLimit);
 
         return HomeRedisResponse.builder()
                 .all(all)
@@ -191,5 +191,9 @@ public class HomeService {
                 .other(other)
                 .myUpcoming(myUpcoming)
                 .build();
+    }
+
+    public List<HomeResponse.MyUpcomingItem> getMyUpcoming(Long userId, int limit) {
+        return buildMyUpcoming(userId, limit, LocalDate.now(ZoneId.of("Asia/Seoul")));
     }
 }
