@@ -1,0 +1,24 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: jigmjugm-ingress
+  namespace: jigmjugm-ns
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: api.savenow.kr
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: jigmjugm-svc
+                port:
+                  number: 8080
+  tls:
+    - hosts:
+        - api.savenow.kr
+      secretName: api-savenow-kr-tls
