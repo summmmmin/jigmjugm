@@ -2,9 +2,11 @@ package com.jigmjugm.home.controller;
 
 import com.jigmjugm.common.error.ApiErrorCode;
 import com.jigmjugm.common.error.BusinessException;
+import com.jigmjugm.home.dto.HomeRedisResponse;
 import com.jigmjugm.home.dto.HomeResponse;
 import com.jigmjugm.home.service.HomeService;
 import com.jigmjugm.security.UserPrincipal;
+import io.swagger.v3.oas.annotations.Operation;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -46,5 +48,20 @@ public class HomeController {
                 userId, categoryType, limit, periodDays, minParticipants, myUpcomingLimit);
 
         return ResponseEntity.ok(res);
+    }
+
+    @GetMapping("/home-redis")
+    @Operation(summary = "홈(Redis 캐시 조회)")
+    public ResponseEntity<HomeRedisResponse> homeRedis(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @RequestParam(defaultValue = "3")  int limit,
+            @RequestParam(defaultValue = "28") int periodDays,
+            @RequestParam(defaultValue = "5")  int minParticipants,
+            @RequestParam(defaultValue = "5")  int myUpcomingLimit
+    ) {
+        Long userId = (principal == null) ? null : principal.getUserId();
+        return ResponseEntity.ok(
+                homeService.buildHomeRedis(userId, limit, periodDays, minParticipants, myUpcomingLimit)
+        );
     }
 }

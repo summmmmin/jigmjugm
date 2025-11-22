@@ -31,6 +31,7 @@ public class JwtTokenProvider {
         return Jwts.builder()
                 .setSubject(String.valueOf(user.getUserId()))
                 .claim("nickname", user.getNickname())
+                .claim("role", user.getRole().name())
                 .setIssuedAt(Date.from(now))
                 .setExpiration(Date.from(now.plusSeconds(accessExp)))
                 .signWith(key(), SignatureAlgorithm.HS256)
@@ -50,6 +51,15 @@ public class JwtTokenProvider {
 
     public Claims parse(String token) {
         return Jwts.parserBuilder().setSigningKey(key()).build().parseClaimsJws(token).getBody();
+    }
+
+    public Instant getExpiration(String token) {
+        var claims = Jwts.parserBuilder()
+                .setSigningKey(key())
+                .build()
+                .parseClaimsJws(token)
+                .getBody();
+        return claims.getExpiration().toInstant();
     }
 }
 

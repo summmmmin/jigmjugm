@@ -6,6 +6,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -211,4 +212,25 @@ public interface ChallengeParticipationRepository extends JpaRepository<Challeng
 
     Optional<ChallengeParticipation>findFirstByChallenge_ChallengeIdAndUserIdAndLeftAtIsNull(Long challengeId, Long userId);
 
+
+    @Query(value = """
+        select count(distinct cp.challenge.challengeId)
+        from ChallengeParticipation cp
+        join Challenge c on c.challengeId = cp.challenge.challengeId
+        where cp.userId = :userId
+          and cp.leftAt is null
+          and c.isDeleted = false
+          and c.endDate >= :today
+        """)
+    long countMyActiveOrUpcoming(@Param("userId") Long userId, @Param("today") LocalDate today);
+
+    @Query(value = """
+        select count(distinct cp.challenge_id)
+        from challenge_participation cp
+        join challenge c on c.challenge_id = cp.challenge_id
+        where cp.user_id = :userId
+          and c.is_deleted = false
+          and c.end_date < :today
+        """, nativeQuery = true)
+    long countMyCompleted(@Param("userId") Long userId, @Param("today") LocalDate today);
 }

@@ -19,4 +19,5 @@ public interface HomeChallengeItemView {
     Double getAvgCertRate();
     String getStatus();
     Long getPerRoundAmount();
+    String getCreatorNickname();
 }

@@ -39,10 +39,6 @@ public class UserController {
                 .nickname(user.getNickname())
                 .provider(user.getProvider())
                 .createdAt(user.getCreatedAt())
-                .challengeCount(0) // TODO: 챌린지 기능 구현 후 실제 데이터로 변경
-                .completedChallengeCount(0) // TODO: 챌린지 기능 구현 후 실제 데이터로 변경
-                .points(0) // TODO: 포인트 기능 구현 후 실제 데이터로 변경
-                .level(1) // TODO: 레벨 기능 구현 후 실제 데이터로 변경
                 .build();
 
         return ResponseEntity.ok(response);

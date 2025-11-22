@@ -11,6 +11,7 @@ import com.jigmjugm.challenge.service.ChallengeService;
 import com.jigmjugm.challenge.service.ChallengeStatsService;
 import com.jigmjugm.common.util.ChallengePolicy;
 import com.jigmjugm.security.UserPrincipal;
+import com.jigmjugm.user.repository.UserAccountRepository;
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -37,6 +38,7 @@ public class ChallengeController {
     private final ChallengePolicy policy;
     private final ChallengeRoundRepository challengeRoundRepository;
     private final CertificationRepository certificationRepository;
+    private final UserAccountRepository userAccountRepository;
 
     @PostMapping
     @Operation(summary = "챌린지 생성")
@@ -59,6 +61,8 @@ public class ChallengeController {
         ChallengeDetailResponse.MyParticipation myParticipation = null;
         LocalDate myNextScheduledDate = null;
         ChallengeDetailResponse.MyStats myStats = null;
+
+        var creator = userAccountRepository.findById(challenge.getCreatorUserId()).orElse(null);
 
         boolean canEdit = false, canRebuildRounds = false, canDelete = false;
 
@@ -111,6 +115,7 @@ public class ChallengeController {
                 .endDate(challenge.getEndDate())
                 .createdAt(challenge.getCreatedAt())
                 .thumbnailUrl(challenge.getThumbnailUrl())
+                .creator(creator == null ? null : new ChallengeDetailResponse.Creator(creator.getUserId(), creator.getNickname()))
                 .totalRounds(challengeRoundRepository.countByChallenge_ChallengeId(challengeId))
                 .status(status)
                 .participantCount(stats.totalParticipants())

@@ -59,4 +59,21 @@ public class AuthController {
         return ResponseEntity.noContent().build();
     }
 
+    @PostMapping("/register-idpw")
+    public ResponseEntity<?> register(@RequestBody AuthService.IdPwRegisterRequest req) {
+        var t = authService.registerIdPw(req.getUsername(), req.getPassword());
+        return ResponseEntity.ok(Map.of(
+                "accessToken", t.getAccessToken(),
+                "refreshToken", t.getRefreshToken()
+        ));
+    }
+
+    @PostMapping("/login-idpw")
+    public ResponseEntity<?> login(@RequestBody AuthService.IdPwLoginRequest req) {
+        var t = authService.loginIdPw(req.getUsername(), req.getPassword());
+        return ResponseEntity.ok(Map.of(
+                "accessToken", t.getAccessToken(),
+                "refreshToken", t.getRefreshToken()
+        ));
+    }
 }

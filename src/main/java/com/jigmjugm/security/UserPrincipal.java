@@ -14,8 +14,10 @@ import java.util.List;
 public class UserPrincipal implements Principal {
     private final Long userId;
     private final String nickname;
+    private final String role;
+
     @Override public String getName() { return String.valueOf(userId); }
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return List.of(new SimpleGrantedAuthority("ROLE_USER"));
+        return List.of(new SimpleGrantedAuthority("ROLE_" + role));
     }
 }
