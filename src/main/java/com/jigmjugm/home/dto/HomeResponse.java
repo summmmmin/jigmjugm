@@ -38,10 +38,14 @@ public class HomeResponse {
     public static class MyUpcomingItem {
         private Long challengeId;
         private String title;
+        private String categoryType;
+        private LocalDate startDate;
+        private LocalDate endDate;
         private String status;
-        private Integer nextRoundNo;
         private LocalDate nextScheduledDate;
-        private Integer remainingRounds;
+        private Long nextRoundId;
+        private Integer totalRoundCount;
+        private Integer myCertifiedCount;
         private Long perRoundAmount;
         private String thumbnailUrl;
     }

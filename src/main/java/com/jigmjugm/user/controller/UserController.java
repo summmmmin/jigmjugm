@@ -71,7 +71,7 @@ public class UserController {
     }
 
     /**
-     * 회원 탈퇴 (소프트 삭제)
+     * 회원 탈퇴 (삭제)
      */
     @DeleteMapping("/me")
     public ResponseEntity<Map<String, String>> deleteAccount(
@@ -87,8 +87,6 @@ public class UserController {
         user.softDelete();
         userAccountRepository.save(user);
 
-        // TODO: 세션 무효화 처리
-        
         return ResponseEntity.ok(Map.of("message", "Account deleted successfully"));
     }
 

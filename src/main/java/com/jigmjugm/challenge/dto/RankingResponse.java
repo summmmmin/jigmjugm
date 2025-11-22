@@ -6,6 +6,6 @@ public record RankingResponse(
         List<RankingItem> top,
         RankingMe me
 ) {
-    public static record RankingItem(int rank, long userId, String nickname, double certRate) {}
-    public static record RankingMe(int rank, double certRate) {}
+    public static record RankingItem(int rank, long userId, String nickname, Long certRate) {}
+    public static record RankingMe(int rank, Long certRate) {}
 }

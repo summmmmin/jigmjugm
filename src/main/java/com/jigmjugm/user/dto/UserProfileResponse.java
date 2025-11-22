@@ -6,6 +6,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Getter
 @NoArgsConstructor
@@ -21,4 +22,10 @@ public class UserProfileResponse {
     private long challengeCount;
     private long completedChallengeCount;
     private long createdChallengeCount;
+
+    private List<Long> recentWeeklySavingAmounts;
+
+    private long thisYearSavingAmount;
+    private long thisMonthSavingAmount;
+    private long thisWeekSavingAmount;
 }

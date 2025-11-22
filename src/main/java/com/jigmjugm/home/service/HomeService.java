@@ -128,18 +128,23 @@ public class HomeService {
 
             if (next == null) continue;
 
-            // 남은(오늘 이후 미인증) 회차수
-            int remaining = (int) futureRounds.stream()
-                    .filter(r -> !certifiedRoundIds.contains(r.getRoundId()))
-                    .count();
+            // 총 회차 수
+            int totalRoundCount = roundRepository.countByChallenge_ChallengeId(ch.getChallengeId()).intValue();
+
+            // 내가 인증한 회차 수 (라운드 기준, 중복 방지)
+            int myCertifiedCount = certifiedRoundIds.size();
 
             result.add(HomeResponse.MyUpcomingItem.builder()
                     .challengeId(ch.getChallengeId())
                     .title(ch.getTitle())
+                    .categoryType(ch.getCategoryType())
+                    .startDate(ch.getStartDate())
+                    .endDate(ch.getEndDate())
                     .status(status)
-                    .nextRoundNo(next.getRoundNo())
                     .nextScheduledDate(next.getScheduledDate())
-                    .remainingRounds(remaining)
+                    .nextRoundId(next.getRoundId())
+                    .totalRoundCount(totalRoundCount)
+                    .myCertifiedCount(myCertifiedCount)
                     .perRoundAmount(ch.getPerRoundAmount())
                     .thumbnailUrl(ch.getThumbnailUrl())
                     .build());

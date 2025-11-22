@@ -34,6 +34,18 @@ public class ChallengePolicy {
         return mask;
     }
 
+    public List<String> toWeeklyDays(int weeklyMask) {
+        var result = new ArrayList<String>();
+        if ((weeklyMask & 1)  != 0) result.add("MON");
+        if ((weeklyMask & 2)  != 0) result.add("TUE");
+        if ((weeklyMask & 4)  != 0) result.add("WED");
+        if ((weeklyMask & 8)  != 0) result.add("THU");
+        if ((weeklyMask & 16) != 0) result.add("FRI");
+        if ((weeklyMask & 32) != 0) result.add("SAT");
+        if ((weeklyMask & 64) != 0) result.add("SUN");
+        return result;
+    }
+
     public List<LocalDate> buildSchedule(String frequencyType, int weeklyMask,
                                          LocalDate start, LocalDate end) {
         List<LocalDate> dates = new ArrayList<>();

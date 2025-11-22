@@ -170,7 +170,7 @@ public class ChallengeService {
         if (!req.getStartDate().isBefore(req.getEndDate())) {
             throw new BusinessException(ApiErrorCode.INVALID_DATE_RANGE, "시작일은 종료일 이전이어야 합니다.");
         }
-        if (req.getGoalAmount() <= req.getPerRoundAmount()) {
+        if (req.getGoalAmount() < req.getPerRoundAmount()) {
             throw new BusinessException(ApiErrorCode.INVALID_AMOUNT, "목표금액은 회차금액보다 커야 합니다.");
         }
         if ("WEEKLY".equalsIgnoreCase(req.getFrequencyType())) {

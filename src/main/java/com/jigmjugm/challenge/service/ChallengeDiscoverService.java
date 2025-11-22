@@ -1,6 +1,8 @@
 package com.jigmjugm.challenge.service;
 
 import com.jigmjugm.challenge.dto.ChallengeListItemView;
+import com.jigmjugm.challenge.dto.MyChallengeListItemView;
+import com.jigmjugm.challenge.repo.ChallengeParticipationRepository;
 import com.jigmjugm.challenge.repo.ChallengeRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -16,17 +18,19 @@ import java.time.ZoneId;
 @RequiredArgsConstructor
 public class ChallengeDiscoverService {
     private final ChallengeRepository challengeRepository;
-
+    private final ChallengeParticipationRepository challengeParticipationRepository;
     public Page<ChallengeListItemView> discover(String categoryType, String status, String sort, int page, int size) {
         String category = normalizeCategory(categoryType);
         String st = normalizeStatus(status);
         LocalDate today = LocalDate.now(ZoneId.of("Asia/Seoul"));
 
         if ("avgCertRate,desc".equalsIgnoreCase(sort)) {
+            // 인증률 높은순
             Pageable pageable = PageRequest.of(page, size);
             return challengeRepository.searchDiscoverOrderByAvgCertRate(category, st, today, 28, pageable);
         }
         if ("totalAmount,desc".equalsIgnoreCase(sort)) {
+            // 누적 저금액 많은 순
             Pageable pageable = PageRequest.of(page, size);
             return challengeRepository.searchDiscoverOrderByTotalAmount(category, st, today, pageable);
         }
@@ -55,4 +59,56 @@ public class ChallengeDiscoverService {
             default -> null;
         };
     }
+
+    public Page<MyChallengeListItemView> myChallenges(
+            Long userId,
+            String categoryType,
+            String status,
+            boolean includeWithdrawn,
+            String sort,
+            int page,
+            int size
+    ) {
+        String raw = categoryType == null ? "ALL" : categoryType.toUpperCase();
+        boolean myCreatedOnly = "MY_CREATED".equals(raw);      // 추가
+        String category = myCreatedOnly ? "ALL" : normalizeCategory(raw);
+        String st = normalizeStatus(status);
+        LocalDate today = LocalDate.now(ZoneId.of("Asia/Seoul"));
+        String s = sort == null ? "" : sort.trim();
+
+        // 1) 나의 인증률 높은 순
+        if ("avgCertRate,desc".equalsIgnoreCase(s)) {
+            Pageable pageable = PageRequest.of(page, size);
+            return challengeParticipationRepository.searchMyChallengesOrderByMyCertRate(
+                    userId, category, st, today, 28, includeWithdrawn, myCreatedOnly, pageable
+            );
+        }
+
+        // 2) 누적 저금액 많은 순
+        if ("totalAmount,desc".equalsIgnoreCase(s)) {
+            Pageable pageable = PageRequest.of(page, size);
+            return challengeParticipationRepository.searchMyChallengesOrderByTotalAmount(
+                    userId, category, st, today, includeWithdrawn, myCreatedOnly, pageable
+            );
+        }
+
+        // 3) 최신 생성순 / 4) 시작일 순
+        Pageable pageable = buildMyChallengesPageable(s, page, size);
+        return challengeParticipationRepository.findMyChallenges(
+                userId, category, st, today, includeWithdrawn, myCreatedOnly, pageable
+        );
+    }
+
+    public Pageable buildMyChallengesPageable(String sort, int page, int size) {
+        String s = sort == null ? "" : sort.trim();
+        if ("createdAt,desc".equalsIgnoreCase(s)) {
+            // root = ChallengeParticipation, createdAt/startDate는 challenge의 필드
+            return PageRequest.of(page, size,
+                    Sort.by(Sort.Order.desc("challenge.createdAt").nullsLast()));
+        }
+        // 기본: 시작일 가까운 순
+        return PageRequest.of(page, size,
+                Sort.by(Sort.Order.asc("challenge.startDate")));
+    }
+
 }
