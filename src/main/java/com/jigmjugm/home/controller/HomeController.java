@@ -28,7 +28,7 @@ public class HomeController {
             @RequestParam(defaultValue = "ALL") String categoryType,
             @RequestParam(defaultValue = "3") int limit,
             @RequestParam(defaultValue = "28") int periodDays,
-            @RequestParam(defaultValue = "5") int minParticipants,
+            @RequestParam(defaultValue = "1") int minParticipants,
             @RequestParam(defaultValue = "3") int myUpcomingLimit
     ) {
         // 기본 파라미터 검증

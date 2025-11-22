@@ -38,8 +38,15 @@ public class ChallengeStatsService {
     }
 
     public RankingResponse ranking(Long challengeId, Integer periodDays, Integer limit, UserPrincipal principal) {
-        var exists = challengeRepository.existsById(challengeId);
-        if (!exists) throw new BusinessException(ApiErrorCode.NOT_FOUND, "챌린지를 찾을 수 없습니다.");
+        var ch = challengeRepository.findById(challengeId)
+                .orElseThrow(() -> new BusinessException(ApiErrorCode.NOT_FOUND, "챌린지를 찾을 수 없습니다."));
+
+        LocalDate today = today();
+
+        // 🔹 아직 시작 전이면 빈 랭킹 반환
+        if (ch.getStartDate().isAfter(today)) { // startDate > today == 아직 시작 전
+            return new RankingResponse(List.of(), null); // top = [], me = null
+        }
 
         int pd = (periodDays == null ? 28 : Math.max(7, Math.min(90, periodDays)));
         int lim = (limit == null ? 3 : Math.max(1, Math.min(50, limit)));
@@ -52,7 +59,7 @@ public class ChallengeStatsService {
                         r.getRank() == null ? 0 : r.getRank(),
                         r.getUserId(),
                         r.getNickname(),
-                        r.getCertRate() == null ? 0.0 : r.getCertRate()))
+                        (r.getCertRate() == null ? 0L : Math.round(r.getCertRate() * 100.0))))
                 .toList();
 
         RankingResponse.RankingMe me = null;
@@ -62,7 +69,7 @@ public class ChallengeStatsService {
                 var r = mine.get(0);
                 me = new RankingResponse.RankingMe(
                         r.getRank() == null ? 0 : r.getRank(),
-                        r.getCertRate() == null ? 0.0 : r.getCertRate()
+                        (r.getCertRate() == null ? 0L : Math.round(r.getCertRate() * 100.0))
                 );
             }
         }
@@ -72,6 +79,19 @@ public class ChallengeStatsService {
     public RecentRankingItem recentRanking(Long challengeId, UserPrincipal principal) {
         var ch = challengeRepository.findById(challengeId)
                 .orElseThrow(() -> new BusinessException(ApiErrorCode.NOT_FOUND, "챌린지를 찾을 수 없습니다."));
+
+        LocalDate today = today();
+
+        // 🔹 시작 전이면 빈 랭킹 반환
+        if (ch.getStartDate().isAfter(today)) {
+            return new RecentRankingItem(
+                    1,          // weekIndex 아무 값이나. 보통 1로.
+                    today,      // start
+                    today,      // end
+                    List.of(),  // top = []
+                    null        // me = null
+            );
+        }
 
         var end = today();
         int elapsedDays = (int) ChronoUnit.DAYS.between(ch.getStartDate(), end);
@@ -88,7 +108,7 @@ public class ChallengeStatsService {
                         r.getRank() == null ? 0 : r.getRank(),
                         r.getUserId(),
                         r.getNickname(),
-                        r.getCertRate() == null ? 0.0 : r.getCertRate()))
+                        (r.getCertRate() == null ? 0L : Math.round(r.getCertRate() * 100.0))))
                 .toList();
 
         RankingResponse.RankingMe me = null;
@@ -98,7 +118,7 @@ public class ChallengeStatsService {
                 var r = mine.getFirst();
                 me = new RankingResponse.RankingMe(
                         r.getRank() == null ? 0 : r.getRank(),
-                        r.getCertRate() == null ? 0.0 : r.getCertRate()
+                        (r.getCertRate() == null ? 0L : Math.round(r.getCertRate() * 100.0))
                 );
             }
         }

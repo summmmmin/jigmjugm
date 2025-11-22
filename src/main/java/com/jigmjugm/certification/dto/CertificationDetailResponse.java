@@ -1,8 +1,11 @@
 package com.jigmjugm.certification.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 import lombok.Getter;
 
+import java.time.LocalDate;
+import java.time.OffsetDateTime;
 import java.util.List;
 
 @Getter
@@ -14,7 +17,7 @@ public class CertificationDetailResponse {
         private Long challengeId;
         private String challengeTitle;
         private Integer roundNo;
-        private java.time.OffsetDateTime certifiedAt;
+        private OffsetDateTime certifiedAt;
         private Long amount;
         private String doubleYn;
         private Long accumulatedAmount;
@@ -22,7 +25,7 @@ public class CertificationDetailResponse {
     @Getter @Builder
     public static class RoundStatusRow {
         private Integer roundNo;
-        private java.time.LocalDate scheduledDate;
+        private LocalDate scheduledDate;
         private String status;
     }
     private Certification certification;

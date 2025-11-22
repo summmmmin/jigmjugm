@@ -26,6 +26,7 @@ import java.time.ZoneId;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/challenges")
@@ -48,7 +49,8 @@ public class ChallengeController {
     }
 
     @GetMapping("/{challengeId}")
-    @Operation(summary = "챌린지 상세 조회")
+    @Operation(summary = "챌린지 상세 조회",
+            description = "챌린지 기본 정보, 참여자 통계, 나의 참여 상태, 최근 랭킹, 권한 정보")
     public ResponseEntity<ChallengeDetailResponse> get(@AuthenticationPrincipal UserPrincipal principal, @PathVariable Long challengeId) {
         Challenge challenge = challengeService.getDetail(challengeId);
         LocalDate today = LocalDate.now(ZoneId.of("Asia/Seoul"));
@@ -61,6 +63,8 @@ public class ChallengeController {
         ChallengeDetailResponse.MyParticipation myParticipation = null;
         LocalDate myNextScheduledDate = null;
         ChallengeDetailResponse.MyStats myStats = null;
+        Long myNextRoundId = null;
+        boolean isCertifiedOnNextRound = false;
 
         var creator = userAccountRepository.findById(challenge.getCreatorUserId()).orElse(null);
 
@@ -74,34 +78,47 @@ public class ChallengeController {
 
                 // 내 승인/제출/거절 카운트
                 long approved = certificationRepository.countByParticipation_ParticipationIdAndCertificationStatus(p.getParticipationId(),"APPROVED");
-                long submitted = certificationRepository.countByParticipation_ParticipationIdAndCertificationStatus(p.getParticipationId(),"SUBMITTED");
-                long rejected = certificationRepository.countByParticipation_ParticipationIdAndCertificationStatus(p.getParticipationId(),"REJECTED");
+                //long submitted = certificationRepository.countByParticipation_ParticipationIdAndCertificationStatus(p.getParticipationId(),"SUBMITTED");
+                //long rejected = certificationRepository.countByParticipation_ParticipationIdAndCertificationStatus(p.getParticipationId(),"REJECTED");
 
                 // 내 인증률 = (시작~오늘 사이 예정 회차 수 대비 승인 수)
                 int scheduled = challengeRoundRepository.countByChallenge_ChallengeIdAndScheduledDateBetween(
                         challengeId, challenge.getStartDate(), today);
+
                 double myRate = (scheduled > 0) ? ((double) approved / (double) scheduled) : 0.0;
                 String myState = (p.getLeftAt() == null) ? "ACTIVE" : "LEFT";
+                Long myTotalAmount = Optional.ofNullable(
+                        certificationRepository.sumApprovedAmountByParticipationId(p.getParticipationId(), "APPROVED")
+                ).orElse(0L);
                 myParticipation = new ChallengeDetailResponse.MyParticipation(
                         p.getParticipationId(),
                         myState,
                         p.getJoinedAt(),
                         p.getLeftAt(),
                         (int) approved,
-                        myRate
+                        Math.round(myRate * 100),
+                        myTotalAmount
                 );
-                myStats = new ChallengeDetailResponse.MyStats((int) approved, (int) submitted, (int) rejected);
+                myStats = new ChallengeDetailResponse.MyStats((int) approved, 0, 0);
 
                 var nextOpt = challengeRoundRepository
                         .findFirstByChallenge_ChallengeIdAndScheduledDateGreaterThanEqualOrderByScheduledDateAsc(
                                 challengeId, today);
                 myNextScheduledDate = nextOpt.map(ChallengeRound::getScheduledDate).orElse(null);
+                myNextRoundId = nextOpt
+                        .map(ChallengeRound::getRoundId)
+                        .orElse(null);
+                isCertifiedOnNextRound = certificationRepository.existsByParticipation_ParticipationIdAndRound_RoundId(p.getParticipationId(),myNextRoundId);
 
                 canEdit = "OWNER".equals(p.getRoleType());
                 canRebuildRounds = canEdit;
-                canDelete = canEdit;
+                if(myState.equals("ACTIVE")) { canDelete = true; }
             }
         }
+        List<String> weeklyDays =
+                "WEEKLY".equalsIgnoreCase(challenge.getFrequencyType())
+                        ? policy.toWeeklyDays(challenge.getWeeklyDaysMask())   // ["MON","TUE", ...]
+                        : List.of();
 
         var body = ChallengeDetailResponse.builder()
                 .challengeId(challenge.getChallengeId())
@@ -109,6 +126,7 @@ public class ChallengeController {
                 .description(challenge.getDescription())
                 .categoryType(challenge.getCategoryType())
                 .frequencyType(challenge.getFrequencyType())
+                .weeklyDays(weeklyDays)
                 .perRoundAmount(challenge.getPerRoundAmount())
                 .goalAmount(challenge.getGoalAmount())
                 .startDate(challenge.getStartDate())
@@ -119,9 +137,12 @@ public class ChallengeController {
                 .totalRounds(challengeRoundRepository.countByChallenge_ChallengeId(challengeId))
                 .status(status)
                 .participantCount(stats.totalParticipants())
-                .avgCertRate(stats.avgCertRate())
+                .avgCertRate(Math.round(stats.avgCertRate() * 100))
+                .avgTotalAmount(stats.avgTotalAmount())
                 .myParticipation(myParticipation)          // 참여 안했거나 비로그인이면 null
                 .myNextScheduledDate(myNextScheduledDate)  // 참여 안했거나 비로그인이면 null
+                .myNextRoundId(myNextRoundId)
+                .certifiedForNextRound(isCertifiedOnNextRound)
                 .myStats(myStats)                          // 참여 안했거나 비로그인이면 null
                 .recentRankings(recent == null? List.of()
                         : List.of(ChallengeDetailResponse.RecentRanking.from(recent)))
