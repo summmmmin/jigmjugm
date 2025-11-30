@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: jigmjugm-svc
+  namespace: jigmjugm-ns
+  labels:
+    app: jigmjugm
+spec:
+  selector:
+    app: jigmjugm
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+  type: ClusterIP
